@@ -1,8 +1,7 @@
 /****************************************************************************
  *
- *   Copyright (C) 2016-2018 Gregory Nutt. All rights reserved.
- *   Authors: Gregory Nutt <gnutt@nuttx.org>
- *            David Sidrane <david_s5@nscdg.com>
+ *   Copyright (C) 2014, 2016 Gregory Nutt. All rights reserved.
+ *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,97 +31,147 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-/* A micro Secure Digital (SD) card slot is available on the board connected to
- * the SD Host Controller (USDHC1) signals of the MCU. This slot will accept
- * micro format SD memory cards.
- *
- *   ------------ ------------- --------
- *    SD Card Slot Board Signal  IMXRT Pin
- *    ------------ ------------- --------
- *    DAT0         USDHC1_DATA0  GPIO_SD_B0_02
- *    DAT1         USDHC1_DATA1  GPIO_SD_B0_03
- *    DAT2         USDHC1_DATA2  GPIO_SD_B0_04
- *    CD/DAT3      USDHC1_DATA3  GPIO_SD_B0_05
- *    CMD          USDHC1_CMD    GPIO_SD_B0_00
- *    CLK          USDHC1_CLK    GPIO_SD_B0_01
- *    CD           USDHC1_CD     GPIO_B1_12
- *    ------------ ------------- --------
- *
- * There are no Write Protect available to the IMXRT.
- */
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
-#include <px4_platform_common/px4_config.h>
-#include <px4_log.h>
+#include <nuttx/config.h>
+#include <board_config.h>
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <debug.h>
 #include <errno.h>
-#include <debug.h>
 
 #include <nuttx/sdio.h>
 #include <nuttx/mmcsd.h>
 
 #include "chip.h"
-#include "imxrt_usdhc.h"
-
 #include "board_config.h"
+#include "stm32_gpio.h"
+#include "stm32_sdmmc.h"
 
-#ifdef CONFIG_IMXRT_USDHC
+#ifdef CONFIG_MMCSD
+
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-/****************************************************************************
- * Private Types
- ****************************************************************************/
+/* Card detections requires card support and a card detection GPIO */
+
+#define HAVE_NCD   1
+#if !defined(GPIO_SDMMC1_NCD)
+#  undef HAVE_NCD
+#endif
+
 /****************************************************************************
  * Private Data
  ****************************************************************************/
+
+static FAR struct sdio_dev_s *sdio_dev;
+#ifdef HAVE_NCD
+static bool g_sd_inserted = 0xff; /* Impossible value */
+#endif
+
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+/****************************************************************************
+ * Name: stm32_ncd_interrupt
+ *
+ * Description:
+ *   Card detect interrupt handler.
+ *
+ ****************************************************************************/
+
+#ifdef HAVE_NCD
+static int stm32_ncd_interrupt(int irq, FAR void *context)
+{
+	bool present;
+
+	present = !stm32_gpioread(GPIO_SDMMC1_NCD);
+
+	if (sdio_dev && present != g_sd_inserted) {
+		sdio_mediachange(sdio_dev, present);
+		g_sd_inserted = present;
+	}
+
+	return OK;
+}
+#endif
+
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: fmuv6xrt_usdhc_initialize
+ * Name: stm32_sdio_initialize
  *
  * Description:
- *   Inititialize the SDHC SD card slot
+ *   Initialize SDIO-based MMC/SD card support
  *
  ****************************************************************************/
 
-int fmuv6xrt_usdhc_initialize(void)
+int stm32_sdio_initialize(void)
 {
 	int ret;
 
-	/* Mount the SDHC-based MMC/SD block driver */
-	/* First, get an instance of the SDHC interface */
+#ifdef HAVE_NCD
+	/* Card detect */
 
-	struct sdio_dev_s *sdhc = imxrt_usdhc_initialize(CONFIG_NSH_MMCSDSLOTNO);
+	bool cd_status;
 
-	if (!sdhc) {
-		PX4_ERR("ERROR: Failed to initialize SDHC slot %d\n", CONFIG_NSH_MMCSDSLOTNO);
+	/* Configure the card detect GPIO */
+
+	stm32_configgpio(GPIO_SDMMC1_NCD);
+
+	/* Register an interrupt handler for the card detect pin */
+
+	stm32_gpiosetevent(GPIO_SDMMC1_NCD, true, true, true, stm32_ncd_interrupt);
+#endif
+
+	/* Mount the SDIO-based MMC/SD block driver */
+	/* First, get an instance of the SDIO interface */
+
+	finfo("Initializing SDIO slot %d\n", SDIO_SLOTNO);
+
+	sdio_dev = sdio_initialize(SDIO_SLOTNO);
+
+	if (!sdio_dev) {
+		syslog(LOG_ERR, "[boot] Failed to initialize SDIO slot %d\n", SDIO_SLOTNO);
 		return -ENODEV;
 	}
 
-	/* Now bind the SDHC interface to the MMC/SD driver */
+	/* Now bind the SDIO interface to the MMC/SD driver */
 
-	ret = mmcsd_slotinitialize(CONFIG_NSH_MMCSDMINOR, sdhc);
+	finfo("Bind SDIO to the MMC/SD driver, minor=%d\n", SDIO_MINOR);
+
+	ret = mmcsd_slotinitialize(SDIO_MINOR, sdio_dev);
 
 	if (ret != OK) {
-		PX4_ERR("ERROR: Failed to bind SDHC to the MMC/SD driver: %d\n", ret);
+		syslog(LOG_ERR, "[boot] Failed to bind SDIO to the MMC/SD driver: %d\n", ret);
 		return ret;
 	}
 
-	syslog(LOG_INFO, "Successfully bound SDHC to the MMC/SD driver\n");
+	finfo("Successfully bound SDIO to the MMC/SD driver\n");
+
+#ifdef HAVE_NCD
+	/* Use SD card detect pin to check if a card is g_sd_inserted */
+
+	cd_status = !stm32_gpioread(GPIO_SDMMC1_NCD);
+	finfo("Card detect : %d\n", cd_status);
+
+	sdio_mediachange(sdio_dev, cd_status);
+#else
+	/* Assume that the SD card is inserted.  What choice do we have? */
+
+	sdio_mediachange(sdio_dev, true);
+#endif
 
 	return OK;
 }
-#endif /* CONFIG_IMXRT_USDHC */
+
+#endif /* CONFIG_MMCSD */

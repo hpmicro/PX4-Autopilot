@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2016, 2018-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,151 +31,50 @@
  *
  ****************************************************************************/
 
-// TODO:Stubbed out for now
-#include <stdint.h>
-
-#include <chip.h>
-#include "hardware/imxrt_tmr.h"
-#include "hardware/imxrt_flexpwm.h"
-#include "imxrt_gpio.h"
-#include "imxrt_iomuxc.h"
-#include "hardware/imxrt_pinmux.h"
-#include "imxrt_xbar.h"
-#include "imxrt_periphclks.h"
-
-#include <drivers/drv_pwm_output.h>
 #include <px4_arch/io_timer_hw_description.h>
 
-#include "board_config.h"
-
-/****************************************************************************************************
- * Definitions
- ****************************************************************************************************/
-
-/* Register accessors */
-
-#define _REG(_addr) (*(volatile uint16_t *)(_addr))
-
-/* QTimer3 register accessors */
-
-#define REG(_reg) _REG(IMXRT_TMR3_BASE + IMXRT_TMR_OFFSET(IMXRT_TMR_CH0,(_reg)))
-
-#define rCOMP1        REG(IMXRT_TMR_COMP1_OFFSET)
-#define rCOMP2        REG(IMXRT_TMR_COMP2_OFFSET)
-#define rCAPT         REG(IMXRT_TMR_CAPT_OFFSET)
-#define rLOAD         REG(IMXRT_TMR_LOAD_OFFSET)
-#define rHOLD         REG(IMXRT_TMR_HOLD_OFFSET)
-#define rCNTR         REG(IMXRT_TMR_CNTR_OFFSET)
-#define rCTRL         REG(IMXRT_TMR_CTRL_OFFSET)
-#define rSCTRL        REG(IMXRT_TMR_SCTRL_OFFSET)
-#define rCMPLD1       REG(IMXRT_TMR_CMPLD1_OFFSET)
-#define rCMPLD2       REG(IMXRT_TMR_CMPLD2_OFFSET)
-#define rCSCTRL       REG(IMXRT_TMR_CSCTRL_OFFSET)
-#define rFILT         REG(IMXRT_TMR_FILT_OFFSET)
-#define rDMA          REG(IMXRT_TMR_DMA_OFFSET)
-#define rENBL         REG(IMXRT_TMR_ENBL_OFFSET)
-
-
-// GPIO_EMC_B1_23  FMU_CH1  FLEXPWM1_PWM0_A
-// GPIO_EMC_B1_25  FMU_CH2  FLEXPWM1_PWM1_A + FLEXIO1_IO25
-// GPIO_EMC_B1_27  FMU_CH3  FLEXPWM1_PWM2_A + FLEXIO1_IO27
-// GPIO_EMC_B1_06  FMU_CH4  FLEXPWM2_PWM0_A + FLEXIO1_IO06
-// GPIO_EMC_B1_08  FMU_CH5  FLEXPWM2_PWM1_A + FLEXIO1_IO08
-// GPIO_EMC_B1_10  FMU_CH6  FLEXPWM2_PWM2_A + FLEXIO1_IO10
-// GPIO_EMC_B1_19  FMU_CH7  FLEXPWM2_PWM3_A + FLEXIO1_IO19
-// GPIO_EMC_B1_29  FMU_CH8  FLEXPWM3_PWM0_A + FLEXIO1_IO29
-// GPIO_EMC_B1_31  FMU_CH9  FLEXPWM3_PWM1_A + FLEXIO1_IO31
-// GPIO_EMC_B1_21  FMU_CH10 FLEXPWM3_PWM3_A + FLEXIO1_IO21
-// GPIO_EMC_B1_00  FMU_CH11 FLEXPWM4_PWM0_A + FLEXIO1_IO00
-// GPIO_EMC_B1_02  FMU_CH12 FLEXPWM4_PWM1_A + FLEXIO1_IO02
-
+/* Timer allocation
+ *
+ * TIM5_CH4  T FMU_CH1
+ * TIM5_CH3  T FMU_CH2
+ * TIM5_CH2  T FMU_CH3
+ * TIM5_CH1  T FMU_CH4
+ *
+ * TIM4_CH2  T FMU_CH5
+ * TIM4_CH3  T FMU_CH6
+ *
+ * TIM12_CH1 T FMU_CH7
+ * TIM12_CH2 T FMU_CH8
+ *
+ * TIM1_CH2  T FMU_CAP1               < Capture
+ * TIM1_CH3  T SPI2_DRDY2_ISM330_INT2 < Capture or GPIO INT
+ * TIM1_CH1  T SPIX_SYNC              > Pulse or GPIO strobe
+ *
+ * TIM2_CH3  T HEATER                 > PWM OUT or GPIO
+ *
+ * TIM14_CH1 T BUZZER_1              - Driven by other driver
+ * TIM8_CH1_IN T FMU_PPM_INPUT       - Sampled byt HRT by other driver
+ */
 
 constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
-	initIOPWMDshot(PWM::FlexPWM1, PWM::Submodule0, GPIO_FLEXIO1_FLEXIO23_1, 23),
-	initIOPWMDshot(PWM::FlexPWM1, PWM::Submodule1, GPIO_FLEXIO1_FLEXIO25_1, 25),
-	initIOPWMDshot(PWM::FlexPWM1, PWM::Submodule2, GPIO_FLEXIO1_FLEXIO27_1, 27),
-	initIOPWMDshot(PWM::FlexPWM2, PWM::Submodule0, GPIO_FLEXIO1_FLEXIO06_1, 6),
-	initIOPWMDshot(PWM::FlexPWM2, PWM::Submodule1, GPIO_FLEXIO1_FLEXIO08_1, 8),
-	initIOPWMDshot(PWM::FlexPWM2, PWM::Submodule2, GPIO_FLEXIO1_FLEXIO10_1, 10),
-	initIOPWMDshot(PWM::FlexPWM2, PWM::Submodule3, GPIO_FLEXIO1_FLEXIO19_1, 19),
-	initIOPWMDshot(PWM::FlexPWM3, PWM::Submodule0, GPIO_FLEXIO1_FLEXIO29_1, 29),
-	initIOPWM(PWM::FlexPWM3, PWM::Submodule1),
-	initIOPWM(PWM::FlexPWM3, PWM::Submodule3),
-	initIOPWM(PWM::FlexPWM4, PWM::Submodule0),
-	initIOPWM(PWM::FlexPWM4, PWM::Submodule1),
+	initIOTimer(Timer::Timer5, DMA{DMA::Index1}),
+	initIOTimer(Timer::Timer4, DMA{DMA::Index1}),
+	initIOTimer(Timer::Timer12),
+	initIOTimer(Timer::Timer1),
+	initIOTimer(Timer::Timer2),
 };
 
 constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
-	/* FMU_CH1  */  initIOTimerChannel(io_timers, {PWM::PWM1_PWM_A, PWM::Submodule0}, IOMUX::Pad::GPIO_EMC_B1_23),
-	/* FMU_CH2  */  initIOTimerChannel(io_timers, {PWM::PWM1_PWM_A, PWM::Submodule1}, IOMUX::Pad::GPIO_EMC_B1_25),
-	/* FMU_CH3  */  initIOTimerChannel(io_timers, {PWM::PWM1_PWM_A, PWM::Submodule2}, IOMUX::Pad::GPIO_EMC_B1_27),
-	/* FMU_CH4  */  initIOTimerChannel(io_timers, {PWM::PWM2_PWM_A, PWM::Submodule0}, IOMUX::Pad::GPIO_EMC_B1_06),
-	/* FMU_CH5  */  initIOTimerChannel(io_timers, {PWM::PWM2_PWM_A, PWM::Submodule1}, IOMUX::Pad::GPIO_EMC_B1_08),
-	/* FMU_CH6  */  initIOTimerChannel(io_timers, {PWM::PWM2_PWM_A, PWM::Submodule2}, IOMUX::Pad::GPIO_EMC_B1_10),
-	/* FMU_CH7  */  initIOTimerChannel(io_timers, {PWM::PWM2_PWM_A, PWM::Submodule3}, IOMUX::Pad::GPIO_EMC_B1_19),
-	/* FMU_CH8  */  initIOTimerChannel(io_timers, {PWM::PWM3_PWM_A, PWM::Submodule0}, IOMUX::Pad::GPIO_EMC_B1_29),
-	/* FMU_CH9  */  initIOTimerChannel(io_timers, {PWM::PWM3_PWM_A, PWM::Submodule1}, IOMUX::Pad::GPIO_EMC_B1_31),
-	/* FMU_CH10 */  initIOTimerChannel(io_timers, {PWM::PWM3_PWM_A, PWM::Submodule3}, IOMUX::Pad::GPIO_EMC_B1_21),
-	/* FMU_CH11 */  initIOTimerChannel(io_timers, {PWM::PWM4_PWM_A, PWM::Submodule0}, IOMUX::Pad::GPIO_EMC_B1_00),
-	/* FMU_CH12 */  initIOTimerChannel(io_timers, {PWM::PWM4_PWM_A, PWM::Submodule1}, IOMUX::Pad::GPIO_EMC_B1_02),
+	initIOTimerChannel(io_timers, {Timer::Timer5, Timer::Channel4}, {GPIO::PortI, GPIO::Pin0}),
+	initIOTimerChannel(io_timers, {Timer::Timer5, Timer::Channel3}, {GPIO::PortH, GPIO::Pin12}),
+	initIOTimerChannel(io_timers, {Timer::Timer5, Timer::Channel2}, {GPIO::PortH, GPIO::Pin11}),
+	initIOTimerChannel(io_timers, {Timer::Timer5, Timer::Channel1}, {GPIO::PortH, GPIO::Pin10}),
+	initIOTimerChannel(io_timers, {Timer::Timer4, Timer::Channel2}, {GPIO::PortD, GPIO::Pin13}),
+	initIOTimerChannel(io_timers, {Timer::Timer4, Timer::Channel3}, {GPIO::PortD, GPIO::Pin14}),
+	initIOTimerChannel(io_timers, {Timer::Timer12, Timer::Channel1}, {GPIO::PortH, GPIO::Pin6}),
+	initIOTimerChannel(io_timers, {Timer::Timer12, Timer::Channel2}, {GPIO::PortH, GPIO::Pin9}),
+	initIOTimerChannelCapture(io_timers, {Timer::Timer1, Timer::Channel2}, {GPIO::PortE, GPIO::Pin11}),
 };
-
 
 constexpr io_timers_channel_mapping_t io_timers_channel_mapping =
 	initIOTimerChannelMapping(io_timers, timer_io_channels);
-
-constexpr io_timers_t led_pwm_timers[MAX_LED_TIMERS] = {
-};
-
-constexpr timer_io_channels_t led_pwm_channels[MAX_TIMER_LED_CHANNELS] = {
-};
-
-
-void fmuv6xrt_timer_initialize(void)
-{
-	/* We must configure Qtimer 3 as the bus_clk_root which is
-	 * BUS_CLK_ROOT_SYS_PLL3_CLK / 2 = 240 Mhz
-	 * devided by 15 by to yield 16 Mhz
-	 * and deliver that clock to the eFlexPWM1,2,34 via XBAR
-	 *
-	 * IPG    = 240 Mhz
-	 * 16Mhz  = 240 / 15
-	 * COMP 1 = 8, COMP2 = 7
-	 *
-	 * */
-	/* Enable Block Clocks for Qtimer and XBAR1 */
-
-	imxrt_clockall_timer3();
-	imxrt_clockall_xbar1();
-
-	/* Disable Timer */
-
-	rCTRL = 0;
-	rCOMP1 = 8 - 1; // N - 1
-	rCOMP2 = 7 - 1;
-
-	rCAPT = 0;
-	rLOAD = 0;
-	rCNTR = 0;
-
-	rSCTRL = TMR_SCTRL_OEN;
-
-	rCMPLD1 = 0;
-	rCMPLD2 = 0;
-	rCSCTRL = 0;
-	rFILT   = 0;
-	rDMA    = 0;
-
-	/* Count rising edges of primary source,
-	 * Prescaler is /1
-	 * Count UP until compare, then re-initialize. a successful compare occurs when the counter reaches a COMP1 value.
-	 * Toggle OFLAG output using alternating compare registers
-	 */
-	rCTRL   = (TMR_CTRL_CM_MODE1 | TMR_CTRL_PCS_DIV1 | TMR_CTRL_LENGTH | TMR_CTRL_OUTMODE_TOG_ALT);
-
-	/* QTIMER3_TIMER0  -> Flexpwm1,2,34ExtClk  */
-
-	imxrt_xbar_connect(IMXRT_XBARA1_OUT_FLEXPWM1_EXT_CLK_SEL_OFFSET, IMXRT_XBARA1_IN_QTIMER3_TMR0_OUT);
-	imxrt_xbar_connect(IMXRT_XBARA1_OUT_FLEXPWM2_EXT_CLK_SEL_OFFSET, IMXRT_XBARA1_IN_QTIMER3_TMR0_OUT);
-	imxrt_xbar_connect(IMXRT_XBARA1_OUT_FLEXPWM34_EXT_CLK_SEL_OFFSET, IMXRT_XBARA1_IN_QTIMER3_TMR0_OUT);
-}

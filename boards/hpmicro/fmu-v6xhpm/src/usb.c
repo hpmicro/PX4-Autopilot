@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2016, 2018 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2016 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
- * @file usb.c
+ * @file px4fmu_usb.c
  *
  * Board-specific USB functions.
  */
@@ -53,9 +53,9 @@
 
 #include <arm_internal.h>
 #include <chip.h>
-#include <hardware/imxrt_usb_analog.h>
+#include <stm32_gpio.h>
+#include <stm32_otg.h>
 #include "board_config.h"
-#include "imxrt_periphclks.h"
 
 /************************************************************************************
  * Definitions
@@ -68,64 +68,38 @@
 /************************************************************************************
  * Public Functions
  ************************************************************************************/
-int imxrt_usb_initialize(void)
-{
-	imxrt_clockall_usboh3();
-	return 0;
-}
+
 /************************************************************************************
- * Name:  imxrt_usbpullup
+ * Name: stm32_usbinitialize
  *
  * Description:
- *   If USB is supported and the board supports a pullup via GPIO (for USB software
- *   connect and disconnect), then the board software must provide imxrt_usbpullup.
- *   See include/nuttx/usb/usbdev.h for additional description of this method.
- *   Alternatively, if no pull-up GPIO the following EXTERN can be redefined to be
- *   NULL.
+ *   Called to setup USB-related GPIO pins for the PX4FMU board.
  *
  ************************************************************************************/
 
-__EXPORT
-int imxrt_usbpullup(FAR struct usbdev_s *dev, bool enable)
+__EXPORT void stm32_usbinitialize(void)
 {
-	usbtrace(TRACE_DEVPULLUP, (uint16_t)enable);
+	/* The OTG FS has an internal soft pull-up */
 
-	return OK;
+	/* Configure the OTG FS VBUS sensing GPIO, Power On, and Overcurrent GPIOs */
+
+#ifdef CONFIG_STM32H7_OTGFS
+	stm32_configgpio(GPIO_OTGFS_VBUS);
+#endif
 }
 
 /************************************************************************************
- * Name:  imxrt_usbsuspend
+ * Name:  stm32_usbsuspend
  *
  * Description:
- *   Board logic must provide the imxrt_usbsuspend logic if the USBDEV driver is
+ *   Board logic must provide the stm32_usbsuspend logic if the USBDEV driver is
  *   used.  This function is called whenever the USB enters or leaves suspend mode.
  *   This is an opportunity for the board logic to shutdown clocks, power, etc.
  *   while the USB is suspended.
  *
  ************************************************************************************/
 
-__EXPORT
-void imxrt_usbsuspend(FAR struct usbdev_s *dev, bool resume)
+__EXPORT void stm32_usbsuspend(FAR struct usbdev_s *dev, bool resume)
 {
 	uinfo("resume: %d\n", resume);
-}
-
-/************************************************************************************
- * Name: board_read_VBUS_state
- *
- * Description:
- *   All boards must provide a way to read the state of VBUS, this my be simple
- *   digital input on a GPIO. Or something more complicated like a Analong input
- *   or reading a bit from a USB controller register.
- *
- * Returns -  0 if connected.
- *
- ************************************************************************************/
-#undef IMXRT_USB_ANALOG_USB1_VBUS_DETECT_STAT
-#define USB1_VBUS_DET_STAT_OFFSET               0xd0
-#define IMXRT_USB_ANALOG_USB1_VBUS_DETECT_STAT (IMXRT_USBPHY1_BASE + USB1_VBUS_DET_STAT_OFFSET)
-
-int board_read_VBUS_state(void)
-{
-	return (getreg32(IMXRT_USB_ANALOG_USB1_VBUS_DETECT_STAT) & USB_ANALOG_USB_VBUS_DETECT_STAT_VBUS_3V_VALID) ? 0 : 1;
 }

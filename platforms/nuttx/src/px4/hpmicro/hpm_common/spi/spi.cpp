@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2024 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,16 +42,20 @@
 
 #include <nuttx/spi/spi.h>
 #include <arch/board/board.h>
-#include <arm_internal.h>
+#include <riscv_internal.h>
 #include <chip.h>
-#include "imxrt_gpio.h"
+#include "io_gpio.h"
 
+
+#if defined(CONFIG_SPI)
+
+static const px4_spi_bus_t *_spi_bus0;
 static const px4_spi_bus_t *_spi_bus1;
 static const px4_spi_bus_t *_spi_bus2;
 static const px4_spi_bus_t *_spi_bus3;
 static const px4_spi_bus_t *_spi_bus4;
 static const px4_spi_bus_t *_spi_bus5;
-static const px4_spi_bus_t *_spi_bus6;
+
 
 static void spi_bus_configgpio_cs(const px4_spi_bus_t *bus)
 {
@@ -62,7 +66,7 @@ static void spi_bus_configgpio_cs(const px4_spi_bus_t *bus)
 	}
 }
 
-__EXPORT void imxrt_spiinitialize()
+__EXPORT void hpm_spiinitialize()
 {
 	px4_set_spi_buses_from_hw_version();
 	board_control_spi_sensors_power_configgpio();
@@ -70,6 +74,9 @@ __EXPORT void imxrt_spiinitialize()
 
 	for (int i = 0; i < SPI_BUS_MAX_BUS_ITEMS; ++i) {
 		switch (px4_spi_buses[i].bus) {
+
+		case 0: _spi_bus0 = &px4_spi_buses[i]; break;
+
 		case 1: _spi_bus1 = &px4_spi_buses[i]; break;
 
 		case 2: _spi_bus2 = &px4_spi_buses[i]; break;
@@ -79,70 +86,70 @@ __EXPORT void imxrt_spiinitialize()
 		case 4: _spi_bus4 = &px4_spi_buses[i]; break;
 
 		case 5: _spi_bus5 = &px4_spi_buses[i]; break;
-
-		case 6: _spi_bus6 = &px4_spi_buses[i]; break;
+		
+		default: break;
 		}
 	}
 
-#ifdef CONFIG_IMXRT_LPSPI1
+#ifdef CONFIG_HPM_SPI0
+	ASSERT(_spi_bus0);
+
+	if (board_has_bus(BOARD_SPI_BUS, 0)) {
+		spi_bus_configgpio_cs(_spi_bus0);
+	}
+
+#endif // CONFIG_HPM_SPI0
+
+#ifdef CONFIG_HPM_SPI1
 	ASSERT(_spi_bus1);
 
 	if (board_has_bus(BOARD_SPI_BUS, 1)) {
 		spi_bus_configgpio_cs(_spi_bus1);
 	}
 
-#endif // CONFIG_IMXRT_LPSPI1
+#endif // CONFIG_HPM_SPI1
 
 
-#if defined(CONFIG_IMXRT_LPSPI2)
+#if defined(CONFIG_HPM_SPI2)
 	ASSERT(_spi_bus2);
 
 	if (board_has_bus(BOARD_SPI_BUS, 2)) {
 		spi_bus_configgpio_cs(_spi_bus2);
 	}
 
-#endif // CONFIG_IMXRT_LPSPI2
+#endif // CONFIG_HPM_SPI2
 
-#ifdef CONFIG_IMXRT_LPSPI3
+#ifdef CONFIG_HPM_SPI3
 	ASSERT(_spi_bus3);
 
 	if (board_has_bus(BOARD_SPI_BUS, 3)) {
 		spi_bus_configgpio_cs(_spi_bus3);
 	}
 
-#endif // CONFIG_IMXRT_LPSPI3
+#endif // CONFIG_HPM_SPI3
 
-#ifdef CONFIG_IMXRT_LPSPI4
+#ifdef CONFIG_HPM_SPI4
 	ASSERT(_spi_bus4);
 
 	if (board_has_bus(BOARD_SPI_BUS, 4)) {
 		spi_bus_configgpio_cs(_spi_bus4);
 	}
 
-#endif // CONFIG_IMXRT_LPSPI4
+#endif // CONFIG_HPM_SPI4
 
 
-#ifdef CONFIG_IMXRT_LPSPI5
+#ifdef CONFIG_HPM_SPI5
 	ASSERT(_spi_bus5);
 
 	if (board_has_bus(BOARD_SPI_BUS, 5)) {
 		spi_bus_configgpio_cs(_spi_bus5);
 	}
 
-#endif // CONFIG_IMXRT_LPSPI5
+#endif // CONFIG_HPM_SPI5
 
-
-#ifdef CONFIG_IMXRT_LPSPI6
-	ASSERT(_spi_bus6);
-
-	if (board_has_bus(BOARD_SPI_BUS, 6)) {
-		spi_bus_configgpio_cs(_spi_bus6);
-	}
-
-#endif // CONFIG_IMXRT_LPSPI6
 }
 
-static inline void imxrt_lpspixselect(const px4_spi_bus_t *bus, struct spi_dev_s *dev, uint32_t devid, bool selected)
+static inline void hpm_spixselect(const px4_spi_bus_t *bus, struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
 	for (int i = 0; i < SPI_BUS_MAX_DEVICES; ++i) {
 		if (bus->devices[i].cs_gpio == 0) {
@@ -151,129 +158,128 @@ static inline void imxrt_lpspixselect(const px4_spi_bus_t *bus, struct spi_dev_s
 
 		if (devid == bus->devices[i].devid) {
 			// SPI select is active low, so write !selected to select the device
-			imxrt_gpio_write(bus->devices[i].cs_gpio, !selected);
+			hpm_gpio_write(bus->devices[i].cs_gpio, !selected);
 		}
 	}
 }
 
-
 /************************************************************************************
- * Name: imxrt_lpspi1select and imxrt_lpspi1select
+ * Name: hpm_spi0select and hpm_spi0status
  *
  * Description:
- *   Called by imxrt spi driver on bus 1.
+ *   Called by hpm spi driver on bus 0.
  *
  ************************************************************************************/
-#ifdef CONFIG_IMXRT_LPSPI1
+#ifdef CONFIG_HPM_SPI0
 
-__EXPORT void imxrt_lpspi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+__EXPORT void hpm_spi0select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	imxrt_lpspixselect(_spi_bus1, dev, devid, selected);
+	hpm_spixselect(_spi_bus0, dev, devid, selected);
 }
 
-__EXPORT uint8_t imxrt_lpspi1status(FAR struct spi_dev_s *dev, uint32_t devid)
+__EXPORT uint8_t hpm_spi0status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
 	return SPI_STATUS_PRESENT;
 }
-#endif // CONFIG_IMXRT_LPSPI1
+#endif // CONFIG_HPM_SPI0
 
 /************************************************************************************
- * Name: imxrt_lpspi2select and imxrt_lpspi2select
+ * Name: hpm_spi1select and hpm_spi1status
  *
  * Description:
- *   Called by imxrt spi driver on bus 2.
+ *   Called by hpm spi driver on bus 1.
  *
  ************************************************************************************/
-#if defined(CONFIG_IMXRT_LPSPI2)
-__EXPORT void imxrt_lpspi2select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+#ifdef CONFIG_HPM_SPI1
+
+__EXPORT void hpm_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	imxrt_lpspixselect(_spi_bus2, dev, devid, selected);
+	hpm_spixselect(_spi_bus1, dev, devid, selected);
 }
 
-__EXPORT uint8_t imxrt_lpspi2status(FAR struct spi_dev_s *dev, uint32_t devid)
+__EXPORT uint8_t hpm_spi1status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
 	return SPI_STATUS_PRESENT;
 }
-#endif // CONFIG_IMXRT_LPSPI2
+#endif // CONFIG_HPM_SPI1
 
 /************************************************************************************
- * Name: imxrt_lpspi3select and imxrt_lpspi3select
+ * Name: hpm_spi2select and hpm_spi2status
  *
  * Description:
- *   Called by imxrt spi driver on bus 3.
+ *   Called by hpm spi driver on bus 2.
  *
  ************************************************************************************/
-#if defined(CONFIG_IMXRT_LPSPI3)
-__EXPORT void imxrt_lpspi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+#if defined(CONFIG_HPM_SPI2)
+__EXPORT void hpm_spi2select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	imxrt_lpspixselect(_spi_bus3, dev, devid, selected);
+	hpm_spixselect(_spi_bus2, dev, devid, selected);
 }
 
-__EXPORT uint8_t imxrt_lpspi3status(FAR struct spi_dev_s *dev, uint32_t devid)
+__EXPORT uint8_t hpm_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
 	return SPI_STATUS_PRESENT;
 }
-#endif // CONFIG_IMXRT_LPSPI3
+#endif // CONFIG_HPM_SPI2
 
 /************************************************************************************
- * Name: imxrt_lpspi4select and imxrt_lpspi4select
+ * Name: hpm_spi3select and hpm_spi3status
  *
  * Description:
- *   Called by imxrt spi driver on bus 4.
+ *   Called by hpm spi driver on bus 3.
  *
  ************************************************************************************/
-#ifdef CONFIG_IMXRT_LPSPI4
-
-__EXPORT void imxrt_lpspi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+#if defined(CONFIG_HPM_SPI3)
+__EXPORT void hpm_spi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	imxrt_lpspixselect(_spi_bus4, dev, devid, selected);
+	hpm_spixselect(_spi_bus3, dev, devid, selected);
 }
 
-__EXPORT uint8_t imxrt_lpspi4status(FAR struct spi_dev_s *dev, uint32_t devid)
+__EXPORT uint8_t hpm_spi3status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
 	return SPI_STATUS_PRESENT;
 }
-#endif // CONFIG_IMXRT_LPSPI4
+#endif // CONFIG_HPM_SPI3
 
 /************************************************************************************
- * Name: imxrt_lpspi5select and imxrt_lpspi5select
+ * Name: hpm_spi4select and hpm_spi4status
  *
  * Description:
- *   Called by imxrt spi driver on bus 5.
+ *   Called by hpm spi driver on bus 4.
  *
  ************************************************************************************/
-#ifdef CONFIG_IMXRT_LPSPI5
+#ifdef CONFIG_HPM_SPI4
 
-__EXPORT void imxrt_lpspi5select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+__EXPORT void hpm_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	imxrt_lpspixselect(_spi_bus5, dev, devid, selected);
+	hpm_spixselect(_spi_bus4, dev, devid, selected);
 }
 
-__EXPORT uint8_t imxrt_lpspi5status(FAR struct spi_dev_s *dev, uint32_t devid)
+__EXPORT uint8_t hpm_spi4status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
 	return SPI_STATUS_PRESENT;
 }
-#endif // CONFIG_IMXRT_LPSPI5
+#endif // CONFIG_HPM_SPI4
 
 /************************************************************************************
- * Name: imxrt_lpspi6select and imxrt_lpspi6select
+ * Name: hpm_spi5select and hpm_spi5status
  *
  * Description:
- *   Called by imxrt spi driver on bus 6.
+ *   Called by hpm spi driver on bus 5.
  *
  ************************************************************************************/
-#ifdef CONFIG_IMXRT_LPSPI6
+#ifdef CONFIG_HPM_SPI5
 
-__EXPORT void imxrt_lpspi6select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+__EXPORT void hpm_spi5select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	imxrt_lpspixselect(_spi_bus6, dev, devid, selected);
+	hpm_spixselect(_spi_bus5, dev, devid, selected);
 }
 
-__EXPORT uint8_t imxrt_lpspi6status(FAR struct spi_dev_s *dev, uint32_t devid)
+__EXPORT uint8_t hpm_spi5status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
 	return SPI_STATUS_PRESENT;
 }
-#endif // CONFIG_IMXRT_LPSPI6
+#endif // CONFIG_HPM_SPI5
 
 
 void board_control_spi_sensors_power(bool enable_power, int bus_mask)
@@ -294,7 +300,7 @@ void board_control_spi_sensors_power(bool enable_power, int bus_mask)
 			break;
 		}
 
-		const bool bus_matches = bus_mask & (1 << (buses[bus].bus - 1));
+		const bool bus_matches = bus_mask & (1 << buses[bus].bus);
 
 		if (buses[bus].power_enable_gpio == 0 ||
 		    !board_has_bus(BOARD_SPI_BUS, buses[bus].bus) ||
@@ -333,6 +339,8 @@ void board_control_spi_sensors_power_configgpio()
 	}
 }
 
+#define _PIN_OFF(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_INPUT | GPIO_PULLDOWN))
+
 __EXPORT void board_spi_reset(int ms, int bus_mask)
 {
 	bool has_power_enable = false;
@@ -343,7 +351,7 @@ __EXPORT void board_spi_reset(int ms, int bus_mask)
 			break;
 		}
 
-		const bool bus_requested = bus_mask & (1 << (px4_spi_buses[bus].bus - 1));
+		const bool bus_requested = bus_mask & (1 << px4_spi_buses[bus].bus);
 
 		if (px4_spi_buses[bus].power_enable_gpio == 0 ||
 		    !board_has_bus(BOARD_SPI_BUS, px4_spi_buses[bus].bus) ||
@@ -362,61 +370,62 @@ __EXPORT void board_spi_reset(int ms, int bus_mask)
 				px4_arch_configgpio(_PIN_OFF(px4_spi_buses[bus].devices[i].drdy_gpio));
 			}
 		}
+#if defined(CONFIG_HPM_SPI0)
 
-#if defined(CONFIG_IMXRT_LPSPI1)
+		if (px4_spi_buses[bus].bus == 0) {
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI0_SCK));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI0_MISO));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI0_MOSI));
+		}
+
+#endif
+
+#if defined(CONFIG_HPM_SPI1)
 
 		if (px4_spi_buses[bus].bus == 1) {
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI1_SCK));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI1_MISO));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI1_MOSI));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI1_SCK));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI1_MISO));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI1_MOSI));
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI2)
+#if defined(CONFIG_HPM_SPI2)
 
 		if (px4_spi_buses[bus].bus == 2) {
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI2_SCK));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI2_MISO));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI2_MOSI));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI2_SCK));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI2_MISO));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI2_MOSI));
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI3)
+#if defined(CONFIG_HPM_SPI3)
 
 		if (px4_spi_buses[bus].bus == 3) {
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI3_SCK));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI3_MISO));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI3_MOSI));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI3_SCK));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI3_MISO));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI3_MOSI));
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI4)
+#if defined(CONFIG_HPM_SPI4)
 
 		if (px4_spi_buses[bus].bus == 4) {
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI4_SCK));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI4_MISO));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI4_MOSI));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI4_SCK));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI4_MISO));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI4_MOSI));
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI5)
+#if defined(CONFIG_HPM_SPI5)
 
 		if (px4_spi_buses[bus].bus == 5) {
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI5_SCK));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI5_MISO));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI5_MOSI));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI5_SCK));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI5_MISO));
+			px4_arch_configgpio(_PIN_OFF(GPIO_SPI5_MOSI));
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI6)
 
-		if (px4_spi_buses[bus].bus == 6) {
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI6_SCK));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI6_MISO));
-			px4_arch_configgpio(_PIN_OFF(GPIO_LPSPI6_MOSI));
-		}
-
-#endif
 	}
 
 	if (!has_power_enable) {
@@ -445,7 +454,7 @@ __EXPORT void board_spi_reset(int ms, int bus_mask)
 			break;
 		}
 
-		const bool bus_requested = bus_mask & (1 << (px4_spi_buses[bus].bus - 1));
+		const bool bus_requested = bus_mask & (1 << px4_spi_buses[bus].bus);
 
 		if (px4_spi_buses[bus].power_enable_gpio == 0 ||
 		    !board_has_bus(BOARD_SPI_BUS, px4_spi_buses[bus].bus) ||
@@ -462,60 +471,62 @@ __EXPORT void board_spi_reset(int ms, int bus_mask)
 				px4_arch_configgpio(px4_spi_buses[bus].devices[i].drdy_gpio);
 			}
 		}
+#if defined(CONFIG_HPM_SPI0)
 
-#if defined(CONFIG_IMXRT_LPSPI1)
+		if (px4_spi_buses[bus].bus == 0) {
+			px4_arch_configgpio(GPIO_SPI0_SCK);
+			px4_arch_configgpio(GPIO_SPI0_MISO);
+			px4_arch_configgpio(GPIO_SPI0_MOSI);
+		}
+
+#endif
+#if defined(CONFIG_HPM_SPI1)
 
 		if (px4_spi_buses[bus].bus == 1) {
-			px4_arch_configgpio(GPIO_LPSPI1_SCK);
-			px4_arch_configgpio(GPIO_LPSPI1_MISO);
-			px4_arch_configgpio(GPIO_LPSPI1_MOSI);
+			px4_arch_configgpio(GPIO_SPI1_SCK);
+			px4_arch_configgpio(GPIO_SPI1_MISO);
+			px4_arch_configgpio(GPIO_SPI1_MOSI);
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI2)
+#if defined(CONFIG_HPM_SPI2)
 
 		if (px4_spi_buses[bus].bus == 2) {
-			px4_arch_configgpio(GPIO_LPSPI2_SCK);
-			px4_arch_configgpio(GPIO_LPSPI2_MISO);
-			px4_arch_configgpio(GPIO_LPSPI2_MOSI);
+			px4_arch_configgpio(GPIO_SPI2_SCK);
+			px4_arch_configgpio(GPIO_SPI2_MISO);
+			px4_arch_configgpio(GPIO_SPI2_MOSI);
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI3)
+#if defined(CONFIG_HPM_SPI3)
 
 		if (px4_spi_buses[bus].bus == 3) {
-			px4_arch_configgpio(GPIO_LPSPI3_SCK);
-			px4_arch_configgpio(GPIO_LPSPI3_MISO);
-			px4_arch_configgpio(GPIO_LPSPI3_MOSI);
+			px4_arch_configgpio(GPIO_SPI3_SCK);
+			px4_arch_configgpio(GPIO_SPI3_MISO);
+			px4_arch_configgpio(GPIO_SPI3_MOSI);
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI4)
+#if defined(CONFIG_HPM_SPI4)
 
 		if (px4_spi_buses[bus].bus == 4) {
-			px4_arch_configgpio(GPIO_LPSPI4_SCK);
-			px4_arch_configgpio(GPIO_LPSPI4_MISO);
-			px4_arch_configgpio(GPIO_LPSPI4_MOSI);
+			px4_arch_configgpio(GPIO_SPI4_SCK);
+			px4_arch_configgpio(GPIO_SPI4_MISO);
+			px4_arch_configgpio(GPIO_SPI4_MOSI);
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI5)
+#if defined(CONFIG_HPM_SPI5)
 
 		if (px4_spi_buses[bus].bus == 5) {
-			px4_arch_configgpio(GPIO_LPSPI5_SCK);
-			px4_arch_configgpio(GPIO_LPSPI5_MISO);
-			px4_arch_configgpio(GPIO_LPSPI5_MOSI);
+			px4_arch_configgpio(GPIO_SPI5_SCK);
+			px4_arch_configgpio(GPIO_SPI5_MISO);
+			px4_arch_configgpio(GPIO_SPI5_MOSI);
 		}
 
 #endif
-#if defined(CONFIG_IMXRT_LPSPI6)
 
-		if (px4_spi_buses[bus].bus == 6) {
-			px4_arch_configgpio(GPIO_LPSPI6_SCK);
-			px4_arch_configgpio(GPIO_LPSPI6_MISO);
-			px4_arch_configgpio(GPIO_LPSPI6_MOSI);
-		}
-
-#endif
 	}
 }
+
+#endif /* CONFIG_SPI */

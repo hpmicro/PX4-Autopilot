@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,7 @@
 #include <nuttx/config.h>
 #include <nuttx/board.h>
 #include <chip.h>
+#include <stm32_uart.h>
 #include <arch/board/board.h>
 #include "arm_internal.h"
 #include <px4_platform_common/init.h>

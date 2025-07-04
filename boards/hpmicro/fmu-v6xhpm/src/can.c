@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2016, 2018 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,16 +32,31 @@
  ****************************************************************************/
 
 /**
- * @file can.c
+ * @file px4fmu_can.c
  *
  * Board-specific CAN functions.
  */
 
-/************************************************************************************
- * Included Files
- ************************************************************************************/
+#if !defined(CONFIG_CAN)
 
-#include <px4_platform_common/px4_config.h>
+#include <stdint.h>
+
+#include "board_config.h"
+
+
+__EXPORT
+uint16_t board_get_can_interfaces(void)
+{
+	uint16_t enabled_interfaces = 0x3;
+
+	if (!PX4_MFT_HW_SUPPORTED(PX4_MFT_CAN2)) {
+		enabled_interfaces &= ~(1 << 1);
+	}
+
+	return enabled_interfaces;
+}
+
+#else
 
 #include <errno.h>
 #include <debug.h>
@@ -49,24 +64,24 @@
 #include <nuttx/can/can.h>
 #include <arch/board/board.h>
 
-#include <chip.h>
+#include "chip.h"
 #include "arm_internal.h"
 
+#include "chip.h"
+#include "stm32_can.h"
 #include "board_config.h"
-
-#ifdef CONFIG_CAN
 
 /************************************************************************************
  * Pre-processor Definitions
  ************************************************************************************/
 /* Configuration ********************************************************************/
 
-#if defined(CONFIG_IMXRT_FLEXCAN1) && defined(CONFIG_IMXRT_FLEXCAN2) \
-  && defined(CONFIG_IMXRT_FLEXCAN3)
-#  warning "CAN1 and CAN2 and CAN2 are enabled.  Assuming only CAN1."
+#if defined(CONFIG_STM32_CAN1) && defined(CONFIG_STM32_CAN2)
+#  warning "Both CAN1 and CAN2 are enabled.  Assuming only CAN1."
+#  undef CONFIG_STM32_CAN2
 #endif
 
-#ifdef CONFIG_IMXRT_FLEXCAN1
+#ifdef CONFIG_STM32_CAN1
 #  define CAN_PORT 1
 #else
 #  define CAN_PORT 2
@@ -85,7 +100,7 @@ int can_devinit(void);
  * Name: can_devinit
  *
  * Description:
- *   All architectures must provide the following interface to work with
+ *   All STM32 architectures must provide the following interface to work with
  *   examples/can.
  *
  ************************************************************************************/
@@ -99,10 +114,9 @@ int can_devinit(void)
 	/* Check if we have already initialized */
 
 	if (!initialized) {
+		/* Call stm32_caninitialize() to get an instance of the CAN interface */
 
-		/* Call imxrt_caninitialize() to get an instance of the CAN interface */
-
-		can = imxrt_can_initialize(CAN_PORT);
+		can = stm32_caninitialize(CAN_PORT);
 
 		if (can == NULL) {
 			canerr("ERROR:  Failed to get CAN interface\n");
@@ -125,5 +139,4 @@ int can_devinit(void)
 
 	return OK;
 }
-
-#endif
+#endif /* CONFIG_CAN */

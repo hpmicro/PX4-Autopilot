@@ -32,18 +32,12 @@
  ****************************************************************************/
 
 /**
- * @file drv_hrt.c
- * Author: David Sidrane <david_s5@nscdg.com>
+ * @file hrt.c
+ * Author: Zhihong Chen <zhihong.chen@hpmicro.com>
  *
  * High-resolution timer callouts and timekeeping.
  *
  * This can use any GPT timer.
- *
- * Note that really, this could use systick too, but that's
- * monopolised by NuttX and stealing it would just be awkward.
- *
- * We don't use the NuttX Kinetis driver per se; rather, we
- * claim the timer and then drive it directly.
  */
 
 #include <px4_platform_common/px4_config.h>
@@ -64,10 +58,9 @@
 #include <board_config.h>
 #include <drivers/drv_hrt.h>
 
-
-#include "chip.h"
-#include "hardware/imxrt_gpt.h"
-#include "imxrt_periphclks.h"
+#include "board.h"
+#include "hpm_gptmr_drv.h"
+#include "hpm_clock_drv.h"
 
 #undef PPM_DEBUG
 
@@ -77,63 +70,69 @@
 #  define hrtinfo(x...)
 #endif
 
-#define CAT3_(A, B, C)    A##B##C
-#define CAT3(A, B, C)     CAT3_(A, B, C)
-
 #ifdef HRT_TIMER
 
-#define HRT_TIMER_FREQ   1000000
+#define HRT_TIMER_FREQ_MHZ 100
 
 /* HRT configuration */
-
-#define HRT_TIMER_CLOCK  BOARD_GPT_FREQUENCY                /* The input clock frequency to the GPT block */
-#define HRT_TIMER_BASE   CAT3(IMXRT_GPT, HRT_TIMER,_BASE)   /* The Base address of the GPT */
-#define HRT_TIMER_VECTOR CAT(IMXRT_IRQ_GPT, HRT_TIMER)      /* The GPT Interrupt vector */
-
-#if HRT_TIMER == 1
-#  define HRT_CLOCK_ALL()  imxrt_clockall_gpt_bus()         /* The Clock Gating macro for this GPT */
+#if HRT_TIMER == 0
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr0)
+#  define HRT_TIMER_BASE   HPM_GPTMR0
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR0
+#elif HRT_TIMER == 1
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr1)
+#  define HRT_TIMER_BASE   HPM_GPTMR1
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR1
 #elif HRT_TIMER == 2
-#  define HRT_CLOCK_ALL()  imxrt_clockall_gpt2_bus()        /* The Clock Gating macro for this GPT */
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr2)
+#  define HRT_TIMER_BASE   HPM_GPTMR2
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR2
 #elif HRT_TIMER == 3
-#  define HRT_CLOCK_ALL()  imxrt_clockall_gpt3_bus()        /* The Clock Gating macro for this GPT */
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr3)
+#  define HRT_TIMER_BASE   HPM_GPTMR3
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR3
 #elif HRT_TIMER == 4
-#  define HRT_CLOCK_ALL()  imxrt_clockall_gpt4_bus()        /* The Clock Gating macro for this GPT */
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr4)
+#  define HRT_TIMER_BASE   HPM_GPTMR4
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR4
 #elif HRT_TIMER == 5
-#  define HRT_CLOCK_ALL()  imxrt_clockall_gpt5_bus()        /* The Clock Gating macro for this GPT */
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr5)
+#  define HRT_TIMER_BASE   HPM_GPTMR5
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR5
 #elif HRT_TIMER == 6
-#  define HRT_CLOCK_ALL()  imxrt_clockall_gpt6_bus()        /* The Clock Gating macro for this GPT */
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr6)
+#  define HRT_TIMER_BASE   HPM_GPTMR6
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR6
+#elif HRT_TIMER == 7
+#  define HRT_TIMER_CLOCK  clock_get_frequency(clock_gptmr7)
+#  define HRT_TIMER_BASE   HPM_GPTMR7
+#  define HRT_TIMER_VECTOR HPM_IRQn_GPTMR7
 #endif
 
-#if HRT_TIMER == 1 && defined(CONFIG_IMXRT_GPT1)
-#  error must not set CONFIG_IMXRT_GPT1=y and HRT_TIMER=1
-#elif   HRT_TIMER == 2 && defined(CONFIG_IMXRT_GPT2)
-#  error must not set CONFIG_IMXRT_GPT2=y and HRT_TIMER=2
-#elif   HRT_TIMER == 3 && defined(CONFIG_IMXRT_GPT3)
-#  error must not set CONFIG_IMXRT_GPT3=y and HRT_TIMER=3
-#elif   HRT_TIMER == 4 && defined(CONFIG_IMXRT_GPT4)
-#  error must not set CONFIG_IMXRT_GPT4=y and HRT_TIMER=4
-#elif   HRT_TIMER == 5 && defined(CONFIG_IMXRT_GPT5)
-#  error must not set CONFIG_IMXRT_GPT5=y and HRT_TIMER=5
-#elif   HRT_TIMER == 6 && defined(CONFIG_IMXRT_GPT6)
-#  error must not set CONFIG_IMXRT_GPT6=y and HRT_TIMER=6
-#endif
-
-/*
-* HRT clock must be a multiple of 1MHz greater than 1MHz
-*/
-#if (HRT_TIMER_CLOCK % HRT_TIMER_FREQ) != 0
-# error HRT_TIMER_CLOCK must be a multiple of 1MHz
-#endif
-#if HRT_TIMER_CLOCK <= HRT_TIMER_FREQ
-# error HRT_TIMER_CLOCK must be greater than 1MHz
+#if HRT_TIMER == 0 && defined(CONFIG_HPM_TIMER0)
+#  error must not set CONFIG_HPM_TIMER0=y and HRT_TIMER=0
+#elif   HRT_TIMER == 1 && defined(CONFIG_HPM_TIMER1)
+#  error must not set CONFIG_HPM_TIMER1=y and HRT_TIMER=1
+#elif   HRT_TIMER == 2 && defined(CONFIG_HPM_TIMER2)
+#  error must not set CONFIG_HPM_TIMER2=y and HRT_TIMER=2
+#elif   HRT_TIMER == 3 && defined(CONFIG_HPM_TIMER3)
+#  error must not set CONFIG_HPM_TIMER3=y and HRT_TIMER=3
+#elif   HRT_TIMER == 4 && defined(CONFIG_HPM_TIMER4)
+#  error must not set CONFIG_HPM_TIMER4=y and HRT_TIMER=4
+#elif   HRT_TIMER == 5 && defined(CONFIG_HPM_TIMER5)
+#  error must not set CONFIG_HPM_TIMER5=y and HRT_TIMER=5
+#elif   HRT_TIMER == 6 && defined(CONFIG_HPM_TIMER6)
+#  error must not set CONFIG_HPM_TIMER6=y and HRT_TIMER=6
+#elif   HRT_TIMER == 7 && defined(CONFIG_HPM_TIMER7)
+#  error must not set CONFIG_HPM_TIMER7=y and HRT_TIMER=7
 #endif
 
 /**
 * Minimum/maximum deadlines.
 *
 * These are suitable for use with a 32-bit timer/counter clocked
-* at 1MHz.  The high-resolution timer need only guarantee that it
-* not wrap more than once in the 4294.967296s period for absolute
+* at 100MHz.  The high-resolution timer need only guarantee that it
+* not wrap more than once in the 42.949s period for absolute
 * time to be consistently maintained.
 *
 * The minimum deadline must be such that the time taken between
@@ -141,7 +140,7 @@
 * result in missing the deadline.
 */
 #define HRT_INTERVAL_MIN	50
-#define HRT_INTERVAL_MAX	 4294951760LL
+#define HRT_INTERVAL_MAX	42000000LL
 
 /*
 * Period of the free-running counter, in microseconds.
@@ -154,35 +153,10 @@
 */
 #define HRT_COUNTER_SCALE(_c)	(_c)
 
-/* Register accessors */
+#define rCNT gptmr_channel_get_counter(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, gptmr_counter_type_normal)
 
-#define _REG(_addr)	(*(volatile uint32_t *)(_addr))
-
-/* Timer register accessors */
-
-#define REG(_reg)	_REG(HRT_TIMER_BASE + (_reg))
-
-#define rCR         REG(IMXRT_GPT_CR_OFFSET)
-#define rPR         REG(IMXRT_GPT_PR_OFFSET)
-#define rSR         REG(IMXRT_GPT_SR_OFFSET)
-#define rIR         REG(IMXRT_GPT_IR_OFFSET)
-#define rOCR1       REG(IMXRT_GPT_OCR1_OFFSET)
-#define rOCR2       REG(IMXRT_GPT_OCR2_OFFSET)
-#define rOCR3       REG(IMXRT_GPT_OCR3_OFFSET)
-#define rICR1       REG(IMXRT_GPT_ICR1_OFFSET)
-#define rICR2       REG(IMXRT_GPT_ICR2_OFFSET)
-#define rCNT        REG(IMXRT_GPT_CNT_OFFSET)
-
-/*
-* Specific registers and bits used by HRT sub-functions
-*/
-
-# define rOCR_HRT        CAT(rOCR, HRT_TIMER_CHANNEL)              /* GPT Output Compare Register used by HRT */
-# define STATUS_HRT      CAT(GPT_SR_OF, HRT_TIMER_CHANNEL)         /* OF Output Compare Flag */
-# define OFIE_HRT        CAT3(GPT_IR_OF, HRT_TIMER_CHANNEL,IE)     /* Output Compare Interrupt Enable */
-
-#if (HRT_TIMER_CHANNEL < 1) || (HRT_TIMER_CHANNEL > 3)
-#  error HRT_TIMER_CHANNEL must be a value between 1 and 3
+#if (HRT_TIMER_CHANNEL < 0) || (HRT_TIMER_CHANNEL > 3)
+#  error HRT_TIMER_CHANNEL must be a value between 0 and 3
 #endif
 
 /*
@@ -198,7 +172,7 @@ static uint32_t           latency_actual;
 
 /* latency histogram */
 const uint16_t latency_bucket_count = LATENCY_BUCKET_COUNT;
-const uint16_t latency_buckets[LATENCY_BUCKET_COUNT] = { 1, 2, 5, 10, 20, 50, 100, 1000 };
+const uint32_t latency_buckets[LATENCY_BUCKET_COUNT] = { 1, 2, 5, 10, 20, 50, 100, 1000 };
 __EXPORT uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
 
 /* timer-specific functions */
@@ -223,22 +197,12 @@ static void hrt_call_invoke(void);
 
 #else
 
-/* Specific registers and bits used by PPM sub-functions */
-
-# define rICR_PPM        CAT(rICR, HRT_PPM_CHANNEL)               /* GPT Input Capture Register used by PPL */
-# define GPT_CR_IM_BOTH  CAT3(GPT_CR_IM, HRT_PPM_CHANNEL, _BOTH)  /* GPT Capture mode both */
-# define STATUS_PPM      CAT(GPT_SR_IF, HRT_PPM_CHANNEL)          /* IF Input capture  Flag */
-# define IFIE_PPM        CAT3(GPT_IR_IF, HRT_PPM_CHANNEL,IE)     /* Output Compare Interrupt Enable */
-
 /* Sanity checking */
 
-#  if (HRT_PPM_CHANNEL != 1) && (HRT_PPM_CHANNEL != 2)
-#     error HRT_PPM_CHANNEL must be a value of 1 or 2
-#  endif
-
-#   if (HRT_PPM_CHANNEL == HRT_TIMER_CHANNEL)
-#     error HRT_PPM_CHANNEL must not be the same as HRT_TIMER_CHANNEL
+#   if (HRT_PPM_CHANNEL != HRT_TIMER_CHANNEL)
+#     error HRT_PPM_CHANNEL must be the same as HRT_TIMER_CHANNEL
 #   endif
+
 /*
  * PPM decoder tuning parameters
  */
@@ -302,39 +266,28 @@ static void	hrt_ppm_decode(uint32_t status);
  */
 static void hrt_tim_init(void)
 {
-	/* Enable the Module clock */
-
-	HRT_CLOCK_ALL();
-
+	assert(HRT_TIMER_CLOCK == (HRT_TIMER_FREQ_MHZ * 1000000));
 
 	/* claim our interrupt vector */
+	gptmr_channel_config_t config;
 
 	irq_attach(HRT_TIMER_VECTOR, hrt_tim_isr, NULL);
 
-	/* disable and configure the timer */
+	gptmr_channel_get_default_config(HRT_TIMER_BASE, &config);
+	config.mode = gptmr_work_mode_capture_at_both_edge;
+	config.cmp[0] = 1000 * HRT_TIMER_FREQ_MHZ;    /* 1ms */
+	config.reload = 0xFFFFFFFFu;    /* HRT_COUNTER_PERIOD - 1 */
+	gptmr_channel_config(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, &config, false);
+	gptmr_channel_reset_count(HRT_TIMER_BASE, HRT_TIMER_CHANNEL);
+	gptmr_start_counter(HRT_TIMER_BASE, HRT_TIMER_CHANNEL);
 
-	rCR = 0;
-
-	rCR = GPT_CR_OM1_DIS | GPT_CR_OM2_DIS | GPT_CR_OM3_DIS |
-	      GPT_CR_IM_BOTH | GPT_CR_FRR | GPT_CR_CLKSRC_IPG | GPT_CR_ENMOD;
-
-	/* CLKSRC field is divided by [PRESCALER + 1] */
-
-	rPR = (HRT_TIMER_CLOCK / HRT_TIMER_FREQ) - 1;
-
-	/* set an initial capture a little ways off */
-
-	rOCR_HRT  = 1000;
-
+#ifdef HRT_PPM_CHANNEL
 	/* enable interrupts */
+	gptmr_enable_irq(HRT_TIMER_BASE, GPTMR_CH_CAP_IRQ_MASK(HRT_PPM_CHANNEL) | GPTMR_CH_CMP_IRQ_MASK(HRT_TIMER_CHANNEL, 0));
+#else
+	gptmr_enable_irq(HRT_TIMER_BASE, GPTMR_CH_CMP_IRQ_MASK(HRT_TIMER_CHANNEL, 0));
+#endif
 	up_enable_irq(HRT_TIMER_VECTOR);
-
-	rIR = IFIE_PPM | OFIE_HRT;
-
-	/* enable the timer */
-
-	rCR |= GPT_CR_EN;
-
 }
 
 #ifdef HRT_PPM_CHANNEL
@@ -343,10 +296,39 @@ static void hrt_tim_init(void)
  */
 static void hrt_ppm_decode(uint32_t status)
 {
-	uint32_t count = rICR_PPM;
+	static bool s_first_cap;
+	static uint8_t s_cap_idx;
+	uint32_t count_rise = gptmr_channel_get_counter(HRT_TIMER_BASE, HRT_PPM_CHANNEL, gptmr_counter_type_rising_edge);
+	uint32_t count_fall = gptmr_channel_get_counter(HRT_TIMER_BASE, HRT_PPM_CHANNEL, gptmr_counter_type_falling_edge);
+	uint32_t count;
 	uint32_t width;
 	uint32_t interval;
 	unsigned i;
+
+	if (!s_first_cap) {
+		if (count_rise < count_fall) {
+			count = count_fall;
+			s_cap_idx = 0;
+
+		} else {
+			count = count_rise;
+			s_cap_idx = 1;
+		}
+
+		s_first_cap = true;
+
+	} else {
+		if (s_cap_idx == 0) {
+			count = count_rise;
+			s_cap_idx = 1;
+
+		} else {
+			count = count_fall;
+			s_cap_idx = 0;
+		} HRT_PPM_CHANNEL
+	}
+
+	count /= HRT_TIMER_FREQ_MHZ;    /* To us */
 
 	/* how long since the last edge? - this handles counter wrapping implicitly. */
 	width = count - ppm.last_edge;
@@ -498,23 +480,23 @@ hrt_tim_isr(int irq, void *context, void *arg)
 	latency_actual = rCNT;
 
 	/* copy interrupt status */
-	uint32_t status = rSR;
+	uint32_t status = gptmr_get_status(HRT_TIMER_BASE);
 
 	/* ack the interrupts we just read */
 
-	rSR = status;
+	gptmr_clear_status(HRT_TIMER_BASE, status);
 
 #ifdef HRT_PPM_CHANNEL
 
 	/* was this a PPM edge? */
-	if (status & (STATUS_PPM)) {
+	if (status & (GPTMR_CH_CAP_STAT_MASK(HRT_PPM_CHANNEL))) {
 		hrt_ppm_decode(status);
 	}
 
 #endif
 
 	/* was this a timer tick? */
-	if (status & STATUS_HRT) {
+	if (status & GPTMR_CH_CMP_STAT_MASK(HRT_TIMER_CHANNEL, 0)) {
 
 		/* do latency calculations */
 		hrt_latency_update();
@@ -574,7 +556,7 @@ hrt_absolute_time(void)
 
 	px4_leave_critical_section(flags);
 
-	return abstime;
+	return (abstime / HRT_TIMER_FREQ_MHZ);    /* To us */
 }
 
 /**
@@ -813,15 +795,15 @@ hrt_call_reschedule()
 	hrtinfo("schedule for %ul at %ul\n", (unsigned long)(deadline & 0xffffffff), (unsigned long)(now & 0xffffffff));
 
 	/* set the new compare value and remember it for latency tracking */
+	latency_baseline = deadline * HRT_TIMER_FREQ_MHZ;
 
-	rOCR_HRT = latency_baseline = deadline;
-
+	gptmr_update_cmp(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, 0, latency_baseline);
 }
 
 static void
 hrt_latency_update(void)
 {
-	uint16_t latency = latency_actual - latency_baseline;
+	uint32_t latency = (latency_actual - latency_baseline) / HRT_TIMER_FREQ_MHZ;    /* To us */
 	unsigned	index;
 
 	/* bounded buckets */

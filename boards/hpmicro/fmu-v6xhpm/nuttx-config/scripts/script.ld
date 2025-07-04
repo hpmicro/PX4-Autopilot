@@ -1,198 +1,287 @@
-/****************************************************************************
- * boards/px4/fmu-v6xrt/nuttx-config/scripts/script.ld
- *
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.  The
- * ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the
- * License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
- * License for the specific language governing permissions and limitations
- * under the License.
- *
- ****************************************************************************/
-
-/* Specify the memory areas */
-
- /* Reallocate
-  * Final Configuration is
-  *    No DTCM
-  *    512k  OCRAM M7 (FlexRAM)          (2038:0000-203f:ffff)
-  *    128k  OCRAMM7 FlexRAM ECC         (2036:0000-2037:ffff)
-  *    64k   OCRAM2 ECC parity           (2035:0000-2035:ffff)
-  *    64k   OCRAM1 ECC parity           (2034:0000-2034:ffff)
-  *    512k  FlexRAM OCRAM2              (202C:0000-2033:ffff)
-  *    512k  FlexRAM OCRAM1              (2024:0000-202B:ffff)
-  *    256k  System  OCRAM M4            (2020:0000-2023:ffff)
-  */
-
-MEMORY
-{
-  flash (rx)  : ORIGIN = 0x30020000, LENGTH = 4M-128K /* We have 64M but we do not want to wait to program it all */
-  sram  (rwx) : ORIGIN = 0x20240000, LENGTH = 2M-256k-512k
-  itcm  (rwx) : ORIGIN = 0x00000000, LENGTH = 256K   /* TODO FlexRAM partition */
-  dtcm  (rwx) : ORIGIN = 0x20000000, LENGTH = 256K
-}
-
-OUTPUT_ARCH(arm)
-EXTERN(_vectors)
-EXTERN(g_flash_config)
-EXTERN(g_image_vector_table)
-EXTERN(g_boot_data)
-EXTERN(board_get_manifest)
-EXTERN(_bootdelay_signature)
-EXTERN(imxrt_flexspi_initialize)
+/*
+ * Copyright (c) 2021-2023 HPMicro
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
 ENTRY(__start)
 
+STACK_SIZE = _stack_size;
+HEAP_SIZE = _heap_size;
+NX_HEAP_SIZE = _nx_heap_size;
+
+MEMORY
+{
+    XPI0 (rx) : ORIGIN = 0x80000000, LENGTH = _flash_size
+    ILM (wx) : ORIGIN = 0x00000000, LENGTH = 256K
+    DLM (w) : ORIGIN = 0x00080000, LENGTH = 256K
+    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 512K    /* AXI SRAM0 */
+    NONCACHEABLE_RAM (w) : ORIGIN = 0x01100000, LENGTH = 256K    /* AXI SRAM1 */
+    SHARE_RAM (w) : ORIGIN = 0x0117C000, LENGTH = 16K
+    AHB_SRAM (w) : ORIGIN = 0xF0300000, LENGTH = 32k
+    APB_SRAM (w): ORIGIN = 0xF40F0000, LENGTH = 8k
+}
+
+__nor_cfg_option_load_addr__ = ORIGIN(XPI0) + 0x400;
+__boot_header_load_addr__ = ORIGIN(XPI0) + 0x1000;
+__app_load_addr__ = ORIGIN(XPI0) + 0x3000;
+__boot_header_length__ = __boot_header_end__ - __boot_header_start__;
+__app_offset__ = __app_load_addr__ - __boot_header_load_addr__;
+
+
 SECTIONS
 {
-    /* Image Vector Table and Boot Data for booting from external flash */
+    .nor_cfg_option __nor_cfg_option_load_addr__ : {
+        KEEP(*(.nor_cfg_option))
+    } > XPI0
 
-    .boot_hdr : ALIGN(4)
-    {
-        FILL(0xff)
-        . = 0x400 ;
-        __boot_hdr_start__ = ABSOLUTE(.) ;
-        KEEP(*(.boot_hdr.conf))
-        . = 0x1000 ;
-        KEEP(*(.boot_hdr.ivt))
-        . = 0x1020 ;
-        KEEP(*(.boot_hdr.boot_data))
-        . = 0x1030 ;
-        KEEP(*(.boot_hdr.dcd_data))
-        __boot_hdr_end__ = ABSOLUTE(.) ;
-        . = 0x2000 ;
-    } >flash
+    .boot_header __boot_header_load_addr__ : {
+        __boot_header_start__ = .;
+        KEEP(*(.boot_header))
+        KEEP(*(.fw_info_table))
+        KEEP(*(.dc_info))
+        __boot_header_end__ = .;
+    } > XPI0
 
-    .vectors :
-    {
-        KEEP(*(.vectors))
-        *(.text .text.__start)
-    } >flash
-
-    .itcmfunc :
-    {
+    .start __app_load_addr__ : {
         . = ALIGN(8);
-        _sitcmfuncs = ABSOLUTE(.);
-        FILL(0xFF)
-        . = 0x40 ;
-        INCLUDE "itcm_static_functions.ld"
-        INCLUDE "itcm_functions_includes.ld"
+        KEEP(*(.start))
+    } > XPI0
+
+    __vector_load_addr__ = ADDR(.start) + SIZEOF(.start);
+    .vectors ORIGIN(ILM) : AT(__vector_load_addr__) {
         . = ALIGN(8);
-        _eitcmfuncs = ABSOLUTE(.);
-    } > itcm AT > flash
+        __vector_ram_start__ = .;
+        KEEP(*(.vector_table))
+        KEEP(*(.isr_vector))
+        . = ALIGN(8);
+        __vector_ram_end__ = .;
+    } > ILM
 
-    _fitcmfuncs = LOADADDR(.itcmfunc);
+    .text (__vector_load_addr__ + SIZEOF(.vectors)) : {
+        . = ALIGN(8);
+        *(.hash)
+        *(.dyn*)
+        *(.gnu*)
+        *(.pl*)
 
-    /* The RAM vector table (if present) should lie at the beginning of SRAM */
+        KEEP(*(.eh_frame))
+        *(.eh_frame*)
 
-    .ram_vectors (COPY) : {
-        *(.ram_vectors)
-    } > dtcm
+        KEEP (*(.init))
+        KEEP (*(.fini))
 
-    .text : ALIGN(4)
-    {
-        _stext = ABSOLUTE(.);
-        *(.vectors)
-		. = ALIGN(32);
-		/*
-		This signature provides the bootloader with a way to delay booting
-		*/
-		_bootdelay_signature = ABSOLUTE(.);
-		FILL(0xffecc2925d7d05c5)
-		. += 8;
-        *(.text .text.*)
-        *(.fixup)
-        *(.gnu.warning)
-        *(.gnu.linkonce.t.*)
-        *(.glue_7)
-        *(.glue_7t)
-        *(.got)
-        *(.gcc_except_table)
-        *(.gnu.linkonce.r.*)
-        . = ALIGN(4096);
-        _etext = ABSOLUTE(.);
-        _srodata = ABSOLUTE(.);
-        *(.rodata .rodata.*)
-        . = ALIGN(4096);
-        _erodata = ABSOLUTE(.);
-    } > flash
+        /* section information for usbh class */
+        . = ALIGN(8);
+        __usbh_class_info_start__ = .;
+        KEEP(*(.usbh_class_info))
+        __usbh_class_info_end__ = .;
 
-    .init_section :
-    {
-        _sinit = ABSOLUTE(.);
-        KEEP(*(.init_array .init_array.*))
-        _einit = ABSOLUTE(.);
-    } > flash
-
-    .ARM.extab :
-    {
-        *(.ARM.extab*)
-    } > flash
-
-    .ARM.exidx :
-    {
-        __exidx_start = ABSOLUTE(.);
-        *(.ARM.exidx*)
-        __exidx_end = ABSOLUTE(.);
-    } > flash
-
-    _eronly = ABSOLUTE(.);
-
-    .data :
-    {
-        _sdata = ABSOLUTE(.);
-        *(.data .data.*)
-        *(.gnu.linkonce.d.*)
-        CONSTRUCTORS
+        /* RT-Thread related sections - Start */
+        /* section information for finsh shell */
         . = ALIGN(4);
-        _edata = ABSOLUTE(.);
-    } > sram AT > flash
+        __fsymtab_start = .;
+        KEEP(*(FSymTab))
+        __fsymtab_end = .;
+        . = ALIGN(4);
+        __vsymtab_start = .;
+        KEEP(*(VSymTab))
+        __vsymtab_end = .;
+        . = ALIGN(4);
 
-    .ramfunc ALIGN(4):
-    {
-        _sramfuncs = ABSOLUTE(.);
-        *(.ramfunc  .ramfunc.*)
-        _eramfuncs = ABSOLUTE(.);
-    } > sram AT > flash
+        . = ALIGN(4);
+        __rt_init_start = .;
+        KEEP(*(SORT(.rti_fn*)))
+        __rt_init_end = .;
+        . = ALIGN(4);
 
-    _framfuncs = LOADADDR(.ramfunc);
+        /* section information for modules */
+        . = ALIGN(4);
+        __rtmsymtab_start = .;
+        KEEP(*(RTMSymTab))
+        __rtmsymtab_end = .;
 
-    .bss :
-    {
-        _sbss = ABSOLUTE(.);
-        *(.bss .bss.*)
-        *(.gnu.linkonce.b.*)
+        /* RT-Thread related sections - end */
+        . = ALIGN(8);
+    } > XPI0
+
+    .rel : {
+        KEEP(*(.rel*))
+    } > XPI0
+
+    PROVIDE (__etext = .);
+    PROVIDE (_etext = .);
+    PROVIDE (etext = .);
+
+    __data_load_addr__ = etext;
+    .data : AT(__data_load_addr__) {
+        . = ALIGN(8);
+        __data_start__ = .;
+        __global_pointer$ = . + 0x800;
+        *(.data)
+        *(.data*)
+        *(.sdata)
+        *(.sdata*)
+
+        KEEP(*(.jcr))
+        KEEP(*(.dynamic))
+        KEEP(*(.got*))
+        KEEP(*(.got))
+        KEEP(*(.gcc_except_table))
+        KEEP(*(.gcc_except_table.*))
+
+        . = ALIGN(8);
+        PROVIDE(__preinit_array_start = .);
+        KEEP(*(.preinit_array))
+        PROVIDE(__preinit_array_end = .);
+
+        . = ALIGN(8);
+        PROVIDE(__init_array_start = .);
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)))
+        KEEP(*(.init_array))
+        PROVIDE(__init_array_end = .);
+
+        . = ALIGN(8);
+        PROVIDE(__finit_array_start = .);
+        KEEP(*(SORT_BY_INIT_PRIORITY(.finit_array.*)))
+        KEEP(*(.finit_array))
+        PROVIDE(__finit_array_end = .);
+
+        . = ALIGN(8);
+        KEEP(*crtbegin*.o(.ctors))
+        KEEP(*(EXCLUDE_FILE (*crtend*.o) .ctors))
+        KEEP(*(SORT(.ctors.*)))
+        KEEP(*(.ctors))
+
+        . = ALIGN(8);
+        KEEP(*crtbegin*.o(.dtors))
+        KEEP(*(EXCLUDE_FILE (*crtend*.o) .dtors))
+        KEEP(*(SORT(.dtors.*)))
+        KEEP(*(.dtors))
+        . = ALIGN(8);
+        __data_end__ = .;
+        PROVIDE (__edata = .);
+        PROVIDE (_edata = .);
+        PROVIDE (edata = .);
+    } > AXI_SRAM
+
+    __fast_load_addr__ = etext + SIZEOF(.data);
+    .fast : AT(__fast_load_addr__) {
+        . = ALIGN(8);
+        PROVIDE(__ramfunc_start__ = .);
+        *(.fast)
+        *(.fast.*)
+        INCLUDE "ilm_static_functions.ld"
+        INCLUDE "ilm_functions_includes.ld"
+        . = ALIGN(8);
+        PROVIDE(__ramfunc_end__ = .);
+    } > ILM
+
+    .bss (NOLOAD) : {
+        . = ALIGN(8);
+        __bss_start__ = .;
+        *(.bss)
+        *(.bss*)
+        *(.sbss*)
+        *(.scommon)
+        *(.scommon*)
+        *(.dynsbss*)
         *(COMMON)
-        . = ALIGN(4);
-        _ebss = ABSOLUTE(.);
-    } > sram
+        . = ALIGN(8);
+        _end = .;
+        __bss_end__ = .;
+    } > AXI_SRAM
 
-    /* Stabs debugging sections. */
+    .tbss (NOLOAD) : {
+        . = ALIGN(8);
+        PROVIDE(__tbss_start__ = .);
+        __thread_pointer$ = .;
+        *(.tbss)
+        *(.tbss.*)
+        *(.gnu.linkonce.tb.*)
+        *(.tcommon)
+        . = ALIGN(8);
+        PROVIDE(__tbss_end__ = .);
+    } > AXI_SRAM
 
-    .stab 0 : { *(.stab) }
-    .stabstr 0 : { *(.stabstr) }
-    .stab.excl 0 : { *(.stab.excl) }
-    .stab.exclstr 0 : { *(.stab.exclstr) }
-    .stab.index 0 : { *(.stab.index) }
-    .stab.indexstr 0 : { *(.stab.indexstr) }
-    .comment 0 : { *(.comment) }
-    .debug_abbrev 0 : { *(.debug_abbrev) }
-    .debug_info 0 : { *(.debug_info) }
-    .debug_line 0 : { *(.debug_line) }
-    .debug_pubnames 0 : { *(.debug_pubnames) }
-    .debug_aranges 0 : { *(.debug_aranges) }
+    __tdata_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast);
+    .tdata : AT(__tdata_load_addr__) {
+        . = ALIGN(8);
+        PROVIDE(__tdata_start__ = .);
+        *(.tdata)
+        *(.tdata.*)
+        *(.gnu.linkonce.td.*)
+        . = ALIGN(8);
+        PROVIDE(__tdata_end__ = .);
+    } > AXI_SRAM
 
-    _boot_loadaddr = ORIGIN(flash);
-    _boot_size = LENGTH(flash);
-    _ram_size = LENGTH(sram);
-    _sdtcm = ORIGIN(dtcm);
-    _edtcm = ORIGIN(dtcm) + LENGTH(dtcm);
+    .framebuffer (NOLOAD) : {
+        . = ALIGN(8);
+        KEEP(*(.framebuffer))
+        . = ALIGN(8);
+    } > AXI_SRAM
+
+    __noncacheable_init_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata);
+    .noncacheable.init : AT(__noncacheable_init_load_addr__) {
+        . = ALIGN(8);
+        __noncacheable_init_start__ = .;
+        KEEP(*(.noncacheable.init))
+        __noncacheable_init_end__ = .;
+        . = ALIGN(8);
+    } > NONCACHEABLE_RAM
+
+    .noncacheable.bss (NOLOAD) : {
+        . = ALIGN(8);
+        KEEP(*(.noncacheable))
+        __noncacheable_bss_start__ = .;
+        KEEP(*(.noncacheable.bss))
+        __noncacheable_bss_end__ = .;
+        . = ALIGN(8);
+    } > NONCACHEABLE_RAM
+
+    .sh_mem (NOLOAD) : {
+        KEEP(*(.sh_mem))
+    } > SHARE_RAM
+
+    .ahb_sram (NOLOAD) : {
+        KEEP(*(.ahb_sram))
+    } > AHB_SRAM
+
+    .apb_sram (NOLOAD) : {
+        KEEP(*(.backup_sram))
+    } > APB_SRAM
+
+    .fast_ram (NOLOAD) : {
+        KEEP(*(.fast_ram))
+    } > DLM
+
+    .nx_heap (NOLOAD) : {
+        . = ALIGN(8);
+        __nx_heap_start__ = .;
+        . += NX_HEAP_SIZE;
+        __nx_heap_end__ = .;
+    } > DLM
+
+    .heap (NOLOAD) : {
+        . = ALIGN(8);
+        __heap_start__ = .;
+        . += HEAP_SIZE;
+        __heap_end__ = .;
+    } > DLM
+
+    .stack (NOLOAD) : {
+        . = ALIGN(8);
+        __stack_base__ = .;
+        . += STACK_SIZE;
+        . = ALIGN(8);
+        PROVIDE (_stack = .);
+        PROVIDE (_stack_safe = .);
+    } > DLM
+
+    __noncacheable_start__ = ORIGIN(NONCACHEABLE_RAM);
+    __noncacheable_end__ = ORIGIN(NONCACHEABLE_RAM) + LENGTH(NONCACHEABLE_RAM);
+    __share_mem_start__ = ORIGIN(SHARE_RAM);
+    __share_mem_end__ = ORIGIN(SHARE_RAM) + LENGTH(SHARE_RAM);
+
+    __fw_size__ = SIZEOF(.start) + SIZEOF(.vectors) + SIZEOF(.rel) + SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata) + SIZEOF(.noncacheable.init);
+    ASSERT(__fw_size__ <= LENGTH(XPI0), "******  FAILED! XPI0 has not enough space!  ******")
 }

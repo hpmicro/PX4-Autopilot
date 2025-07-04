@@ -61,24 +61,22 @@
 #define SERIAL0_DEV    0x02
 #define SERIAL1_DEV    0x04
 
-#define APP_LOAD_ADDRESS               0x30020000
-#define APP_VECTOR_OFFSET              0x2000
+#define APP_LOAD_ADDRESS               0x08020000
 #define BOOTLOADER_DELAY               5000
 #define INTERFACE_USB                  1
 #define INTERFACE_USB_CONFIG           "/dev/ttyACM0"
+#define BOARD_VBUS                     MK_GPIO_INPUT(GPIO_OTGFS_VBUS)
 
 //#define USE_VBUS_PULL_DOWN
 #define INTERFACE_USART                1
 #define INTERFACE_USART_CONFIG         "/dev/ttyS0,1500000"
-#define BOOT_DELAY_ADDRESS             0x3003b540
-#define BOARD_TYPE                     35
-// The board has a 64 Mb part with 16384, 4K secors, but we artificialy limit it to 4 Mb
-// as 1024, 4K sectors
-#define BOARD_FLASH_SECTORS            1024 // Really (16384)
-#define BOARD_FIRST_FLASH_SECTOR_TO_ERASE 32 // We resreve 128K for the bootloader
-#define BOARD_FLASH_SIZE               (4 * 1024 * 1024)
+#define BOOT_DELAY_ADDRESS             0x000001a0
+#define BOARD_TYPE                     53
+#define _FLASH_KBYTES                  (*(uint32_t *)0x1FF1E880)
+#define BOARD_FLASH_SECTORS            (15)
+#define BOARD_FLASH_SIZE               (_FLASH_KBYTES * 1024)
 
-#define OSC_FREQ                       24
+#define OSC_FREQ                       16
 
 #define BOARD_PIN_LED_ACTIVITY         GPIO_nLED_BLUE // BLUE
 #define BOARD_PIN_LED_BOOTLOADER       GPIO_nLED_GREEN // GREEN

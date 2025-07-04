@@ -182,3 +182,5 @@ endef
 define ARCHIVE
     $(AR) $1 $(2)
 endef
+
+-include ${BOARD_DIR}/scripts/Make.defs

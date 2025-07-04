@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2018-2019, 2023 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2022 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 /**
  * @file init.c
  *
- * PX4 fmu-v6xrt specific early startup code.  This file implements the
+ * PX4FMU-specific early startup code.  This file implements the
  * board_app_initialize() function that is called early by nsh during startup.
  *
  * Code here is run before the rcS script is invoked; it should start required
@@ -47,44 +47,30 @@
 
 #include "board_config.h"
 
-#include <barriers.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <debug.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include <nuttx/config.h>
 #include <nuttx/board.h>
 #include <nuttx/spi/spi.h>
-#include <nuttx/i2c/i2c_master.h>
 #include <nuttx/sdio.h>
 #include <nuttx/mmcsd.h>
 #include <nuttx/analog/adc.h>
 #include <nuttx/mm/gran.h>
-
-#include "arm_internal.h"
-#include "imxrt_flexspi_nor_boot.h"
-#include <px4_arch/imxrt_flexspi_nor_flash.h>
-#include "imxrt_iomuxc.h"
-#include "imxrt_flexcan.h"
-#include "imxrt_enet.h"
 #include <chip.h>
-
-#include <hardware/imxrt_lpuart.h>
-#undef FLEXSPI_LUT_COUNT
-#include <hardware/imxrt_flexspi.h>
-
+#include <stm32_uart.h>
 #include <arch/board/board.h>
-
+#include "arm_internal.h"
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_board_led.h>
 #include <systemlib/px4_macros.h>
 #include <px4_arch/io_timer.h>
-#include <px4_arch/imxrt_romapi.h>
 #include <px4_platform_common/init.h>
+#include <px4_platform_common/px4_manifest.h>
 #include <px4_platform/gpio.h>
 #include <px4_platform/board_determine_hw_info.h>
 #include <px4_platform/board_dma_alloc.h>
@@ -106,15 +92,8 @@ __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
-
-extern uint32_t _srodata;            /* Start of .rodata */
-extern uint32_t _erodata;            /* End of .rodata */
-extern const uint64_t _fitcmfuncs;   /* Copy source address in FLASH */
-extern uint64_t _sitcmfuncs;         /* Copy destination start address in ITCM */
-extern uint64_t _eitcmfuncs;         /* Copy destination end address in ITCM */
-extern uint64_t _sdtcm;              /* Copy destination start address in DTCM */
-extern uint64_t _edtcm;              /* Copy destination end address in DTCM */
 __END_DECLS
+
 
 /************************************************************************************
  * Name: board_peripheral_reset
@@ -127,19 +106,27 @@ __EXPORT void board_peripheral_reset(int ms)
 	/* set the peripheral rails off */
 
 	VDD_5V_PERIPH_EN(false);
-	VDD_5V_HIPOWER_EN(false);
+	board_control_spi_sensors_power(false, 0xffff);
+	VDD_3V3_SENSORS4_EN(false);
+
+	bool last = READ_VDD_3V3_SPEKTRUM_POWER_EN();
+	/* Keep Spektum on to discharge rail*/
+	VDD_3V3_SPEKTRUM_POWER_EN(false);
 
 	/* wait for the peripheral rail to reach GND */
 	usleep(ms * 1000);
-	syslog(LOG_DEBUG, "reset done, %d ms", ms);
+	syslog(LOG_DEBUG, "reset done, %d ms\n", ms);
 
 	/* re-enable power */
 
 	/* switch the peripheral rail back on */
-	VDD_5V_HIPOWER_EN(true);
+	VDD_3V3_SPEKTRUM_POWER_EN(last);
+	board_control_spi_sensors_power(true, 0xffff);
+	VDD_3V3_SENSORS4_EN(true);
 	VDD_5V_PERIPH_EN(true);
 
 }
+
 /************************************************************************************
  * Name: board_on_reset
  *
@@ -151,11 +138,10 @@ __EXPORT void board_peripheral_reset(int ms)
  *          0 if just resetting
  *
  ************************************************************************************/
-
 __EXPORT void board_on_reset(int status)
 {
 	for (int i = 0; i < DIRECT_PWM_OUTPUT_CHANNELS; ++i) {
-		px4_arch_configgpio(PX4_MAKE_GPIO_INPUT(io_timer_channel_get_gpio_output(i)));
+		px4_arch_configgpio(io_timer_channel_get_gpio_output(i));
 	}
 
 	if (status >= 0) {
@@ -163,148 +149,19 @@ __EXPORT void board_on_reset(int status)
 	}
 }
 
-#if defined(CONFIG_BOARD_BOOTLOADER_FIXUP)
-/****************************************************************************
- * Name: imxrt_octl_flash_initialize
+/************************************************************************************
+ * Name: stm32_boardinitialize
  *
  * Description:
+ *   All STM32 architectures must provide the following entry point.  This entry point
+ *   is called early in the initialization -- after all memory has been configured
+ *   and mapped but before any devices have been initialized.
  *
- ****************************************************************************/
-struct flexspi_nor_config_s g_bootConfig;
+ ************************************************************************************/
 
-
-locate_code(".ramfunc")
-void imxrt_octl_flash_initialize(void)
+__EXPORT void
+stm32_boardinitialize(void)
 {
-	const uint32_t instance =  1;
-
-
-	memcpy((struct flexspi_nor_config_s *)&g_bootConfig, &g_flash_fast_config,
-	       sizeof(struct flexspi_nor_config_s));
-	g_bootConfig.memConfig.tag = FLEXSPI_CFG_BLK_TAG;
-
-	ROM_API_Init();
-
-	ROM_FLEXSPI_NorFlash_Init(instance, (struct flexspi_nor_config_s *)&g_bootConfig);
-	ROM_FLEXSPI_NorFlash_ClearCache(1);
-
-	ARM_DSB();
-	ARM_ISB();
-	ARM_DMB();
-}
-#endif
-
-locate_code(".ramfunc")
-void imxrt_flash_setup_prefetch_partition(void)
-{
-	putreg32((uint32_t)&_srodata, IMXRT_FLEXSPI1_AHBBUFREGIONSTART0);
-	putreg32((uint32_t)&_erodata, IMXRT_FLEXSPI1_AHBBUFREGIONEND0);
-	putreg32((uint32_t)&_stext, IMXRT_FLEXSPI1_AHBBUFREGIONSTART1);
-	putreg32((uint32_t)&_etext, IMXRT_FLEXSPI1_AHBBUFREGIONEND1);
-
-	struct flexspi_type_s *g_flexspi = (struct flexspi_type_s *)IMXRT_FLEXSPIC_BASE;
-	/* RODATA */
-	g_flexspi->AHBRXBUFCR0[0] = FLEXSPI_AHBRXBUFCR0_BUFSZ(128) |
-				    FLEXSPI_AHBRXBUFCR0_MSTRID(7) |
-				    FLEXSPI_AHBRXBUFCR0_PREFETCHEN(1) |
-				    FLEXSPI_AHBRXBUFCR0_REGIONEN(1);
-
-
-	/* All Text */
-	g_flexspi->AHBRXBUFCR0[1] = FLEXSPI_AHBRXBUFCR0_BUFSZ(380) |
-				    FLEXSPI_AHBRXBUFCR0_MSTRID(7) |
-				    FLEXSPI_AHBRXBUFCR0_PREFETCHEN(1) |
-				    FLEXSPI_AHBRXBUFCR0_REGIONEN(1);
-	/* Reset CR7 from rom init */
-	g_flexspi->AHBRXBUFCR0[7] = FLEXSPI_AHBRXBUFCR0_BUFSZ(0) |
-				    FLEXSPI_AHBRXBUFCR0_MSTRID(0) |
-				    FLEXSPI_AHBRXBUFCR0_PREFETCHEN(1) |
-				    FLEXSPI_AHBRXBUFCR0_REGIONEN(0);
-
-	ARM_DSB();
-	ARM_ISB();
-	ARM_DMB();
-}
-/****************************************************************************
- * Name: imxrt_ocram_initialize
- *
- * Description:
- *   Called off reset vector to reconfigure the flexRAM
- *   and finish the FLASH to RAM Copy.
- *
- ****************************************************************************/
-
-__EXPORT void imxrt_ocram_initialize(void)
-{
-	uint32_t regval;
-	register uint64_t *src;
-	register uint64_t *dest;
-
-	/* Reallocate
-	 * Final Configuration is
-	 *    No DTCM
-	 *    512k  OCRAM M7 (FlexRAM)          (2038:0000-203f:ffff)
-	*    128k  OCRAMM7 FlexRAM ECC         (2036:0000-2037:ffff)
-	*    64k   OCRAM2 ECC parity           (2035:0000-2035:ffff)
-	*    64k   OCRAM1 ECC parity           (2034:0000-2034:ffff)
-	*    512k  FlexRAM OCRAM2              (202C:0000-2033:ffff)
-	 *    512k  FlexRAM OCRAM1              (2024:0000-202B:ffff)
-	 *    256k  System  OCRAM M4            (2020:0000-2023:ffff)
-	 */
-
-	putreg32(0x0000FFAA, IMXRT_IOMUXC_GPR_GPR17);
-	putreg32(0x0000FFAA, IMXRT_IOMUXC_GPR_GPR18);
-	regval = getreg32(IMXRT_IOMUXC_GPR_GPR16);
-	putreg32(regval | GPR_GPR16_FLEXRAM_BANK_CFG_SEL_REG, IMXRT_IOMUXC_GPR_GPR16);
-
-	/* Copy any necessary code sections from FLASH to ITCM. The process is the
-	* same as the code copying from FLASH to RAM above. */
-	for (src = (uint64_t *)&_fitcmfuncs, dest = (uint64_t *)&_sitcmfuncs;
-	     dest < (uint64_t *)&_eitcmfuncs;) {
-		*dest++ = *src++;
-	}
-
-	/* Clear .dtcm.  We'll do this inline (vs. calling memset) just to be
-	* certain that there are no issues with the state of global variables.
-	*/
-
-	for (dest = &_sdtcm; dest < &_edtcm;) {
-		*dest++ = 0;
-	}
-
-#if defined(CONFIG_BOOT_RUNFROMISRAM)
-	const uint32_t *src;
-	uint32_t *dest;
-
-	for (src = (uint32_t *)(LOCATE_IN_SRC(g_boot_data.start) + g_boot_data.size),
-	     dest = (uint32_t *)(g_boot_data.start + g_boot_data.size);
-	     dest < (uint32_t *) &_etext;) {
-		*dest++ = *src++;
-	}
-
-#endif
-}
-
-/****************************************************************************
- * Name: imxrt_boardinitialize
- *
- * Description:
- *   All i.MX RT architectures must provide the following entry point.  This
- *   entry point is called early in the initialization -- after clocking and
- *   memory have been configured but before caches have been enabled and
- *   before any devices have been initialized.
- *
- ****************************************************************************/
-
-__EXPORT void imxrt_boardinitialize(void)
-{
-
-#if defined(CONFIG_BOARD_BOOTLOADER_FIXUP)
-	imxrt_octl_flash_initialize();
-#endif
-
-	imxrt_flash_setup_prefetch_partition();
-
 	board_on_reset(-1); /* Reset PWM first thing */
 
 	/* configure LEDs */
@@ -316,12 +173,13 @@ __EXPORT void imxrt_boardinitialize(void)
 	const uint32_t gpio[] = PX4_GPIO_INIT_LIST;
 	px4_gpio_init(gpio, arraySize(gpio));
 
-	imxrt_usb_initialize();
+	/* configure USB interfaces */
 
-	fmuv6xrt_timer_initialize();
+	stm32_usbinitialize();
+
 	VDD_3V3_ETH_POWER_EN(true);
-}
 
+}
 
 /****************************************************************************
  * Name: board_app_initialize
@@ -347,34 +205,17 @@ __EXPORT void imxrt_boardinitialize(void)
  *   any failure to indicate the nature of the failure.
  *
  ****************************************************************************/
+
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
-	int ret = OK;
-
 #if !defined(BOOTLOADER)
 
+	/* Power on Interfaces */
 	VDD_3V3_SD_CARD_EN(true);
-	VDD_3V3_SPEKTRUM_POWER_EN(true);
-
-	/*
-	 *  We have BOARD_I2C_LATEINIT Defined to hold off the I2C init
-	 * To enable SE050 driveHW_VER_REV_DRIVE low. But we have to ensure the
-	 * EEROM version can be read first.
-	 * Power on sequence:
-	 * 1) Drive I2C4 lines to output low (avoid backfeeding SE050)
-	 * 2) DoHWversioning withVDD_3V3_SENSORS4 off. LeaveHW_VER_REV_DRIVE high (SE050 disabled) on exit.
-	 * 3) Then set HW_VER_REV_DRIVE low (SE050 enabled).
-	 * 4) Then power onVDD_3V3_SENSORS4.
-	 * 5) HW_VER_REV_DRIVE can be used to toggle SE050_ENAlater if needed.
-	 */
-
-
-	/* Step 1 */
-
-	px4_arch_gpiowrite(GPIO_LPI2C3_SCL, 0);
-	px4_arch_gpiowrite(GPIO_LPI2C3_SDA, 0);
-	px4_arch_gpiowrite(GPIO_HW_VER_REV_DRIVE, 1);
+	VDD_5V_PERIPH_EN(true);
+	VDD_5V_HIPOWER_EN(true);
 	VDD_3V3_SENSORS4_EN(true);
+	VDD_3V3_SPEKTRUM_POWER_EN(true);
 
 	/* Need hrt running before using the ADC */
 
@@ -382,16 +223,11 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 	// Use the default HW_VER_REV(0x0,0x0) for Ramtron
 
-	imxrt_spiinitialize();
+	stm32_spiinitialize();
 
-	/* Configure the HW based on the manifest
-	 * This will use I2C busses so VDD_3V3_SENSORS4_EN
-	 * needs to be up.
-	 */
+	/* Configure the HW based on the manifest */
 
 	px4_platform_configure();
-
-	/* Step 2 */
 
 	if (OK == board_determine_hw_info()) {
 		syslog(LOG_INFO, "[boot] Rev 0x%1x : Ver 0x%1x %s\n", board_get_hw_revision(), board_get_hw_version(),
@@ -401,105 +237,50 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 		syslog(LOG_ERR, "[boot] Failed to read HW revision and version\n");
 	}
 
-	/* Step 3 reset the SE550
-	 * Power it down, prevetn back feeding
-	 * and let it settle
-	 */
-
-	VDD_3V3_SENSORS4_EN(false);
-	px4_arch_gpiowrite(GPIO_LPI2C3_SCL, 0);
-	px4_arch_gpiowrite(GPIO_LPI2C3_SDA, 0);
-	px4_arch_gpiowrite(GPIO_HW_VER_REV_DRIVE, 1);
-
-	usleep(50000);
-
-	VDD_5V_PERIPH_EN(true);
-	VDD_5V_HIPOWER_EN(true);
-
-	usleep(75000);
-
-	/* Step 4 */
-
-	VDD_3V3_SENSORS4_EN(true);
-	px4_arch_configgpio(GPIO_LPI2C3_SCL);
-	px4_arch_configgpio(GPIO_LPI2C3_SDA);
-
-	/* Enable the SE550 */
-
-	px4_arch_gpiowrite(GPIO_HW_VER_REV_DRIVE, 0);
-
-	/* CTS had been treated as inputs pulled high
-	 * to avoid radios from enteriong bootloader
-	 * Set them up as CTS inputs
-	 */
-
-	px4_arch_configgpio(GPIO_LPUART4_CTS);
-	px4_arch_configgpio(GPIO_LPUART8_CTS);
-	px4_arch_configgpio(GPIO_LPUART10_CTS);
-
-	/* Do the I2C init late BOARD_I2C_LATEINIT */
-
-	px4_platform_i2c_init();
-
 	/* Configure the Actual SPI interfaces (after we determined the HW version)  */
 
-	imxrt_spiinitialize();
+	stm32_spiinitialize();
 
 	board_spi_reset(10, 0xffff);
 
-	/* configure the DMA allocator */
+	/* Configure the DMA allocator */
 
 	if (board_dma_alloc_init() < 0) {
 		syslog(LOG_ERR, "[boot] DMA alloc FAILED\n");
 	}
 
-#if 0 // defined(SERIAL_HAVE_RXDMA)
+#  if defined(SERIAL_HAVE_RXDMA)
 	// set up the serial DMA polling at 1ms intervals for received bytes that have not triggered a DMA event.
 	static struct hrt_call serial_dma_call;
-	hrt_call_every(&serial_dma_call, 1000, 1000, (hrt_callout)imxrt_serial_dma_poll, NULL);
-#endif
+	hrt_call_every(&serial_dma_call, 1000, 1000, (hrt_callout)stm32_serial_dma_poll, NULL);
+#  endif
 
 	/* initial LED state */
 	drv_led_start();
-
 	led_off(LED_RED);
-	led_off(LED_GREEN);
+	led_on(LED_GREEN); // Indicate Power.
 	led_off(LED_BLUE);
-
-#ifdef CONFIG_BOARD_CRASHDUMP
 
 	if (board_hardfault_init(2, true) != 0) {
 		led_on(LED_RED);
 	}
 
-#endif
+	// Ensure Power is off for > 10 mS
+	usleep(15 * 1000);
+	VDD_3V3_SD_CARD_EN(true);
+	usleep(500 * 1000);
 
-#if defined(CONFIG_IMXRT_USDHC)
-	ret = fmuv6xrt_usdhc_initialize();
+#  ifdef CONFIG_MMCSD
+	int ret = stm32_sdio_initialize();
 
 	if (ret != OK) {
 		led_on(LED_RED);
+		return ret;
 	}
 
-#endif
-
-#ifdef CONFIG_IMXRT_ENET
-	imxrt_netinitialize(0);
-#endif
-
-#ifdef CONFIG_IMXRT_FLEXCAN1
-	imxrt_caninitialize(1);
-#endif
-
-#ifdef CONFIG_IMXRT_FLEXCAN2
-	imxrt_caninitialize(2);
-#endif
-
-#ifdef CONFIG_IMXRT_FLEXCAN3
-	imxrt_caninitialize(3);
-#endif
+#  endif /* CONFIG_MMCSD */
 
 #endif /* !defined(BOOTLOADER) */
 
-	return ret;
+	return OK;
 }

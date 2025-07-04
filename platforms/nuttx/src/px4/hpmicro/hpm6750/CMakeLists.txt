@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015-2019 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2019 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,6 +31,15 @@
 #
 ############################################################################
 
-px4_add_library(arch_led_pwm
-	led_pwm.cpp
-)
+set(HPMICOR_SDK_PATH ${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/nuttx/arch/risc-v/src/hpmicro/hpm_sdk)
+include_directories(${HPMICOR_SDK_PATH}/drivers/inc)
+include_directories(${HPMICOR_SDK_PATH}/soc/ip)
+include_directorieS(${HPMICOR_SDK_PATH}/soc/HPM6750)
+include_directories(${HPMICOR_SDK_PATH}/arch)
+
+add_subdirectory(../hpm_common/board_critmon board_critmon)
+add_subdirectory(../hpm_common/board_reset board_reset)
+add_subdirectory(../hpm_common/hrt hrt)
+add_subdirectory(../hpm_common/io_pins io_pins)
+add_subdirectory(../hpm_common/spi spi)
+add_subdirectory(../hpm_common/version version)

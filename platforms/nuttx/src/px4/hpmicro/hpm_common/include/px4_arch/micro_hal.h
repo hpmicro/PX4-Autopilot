@@ -28,21 +28,73 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  ****************************************************************************/
 #pragma once
 
+#include <nuttx/kmalloc.h>
 #include <px4_platform/micro_hal.h>
 
 __BEGIN_DECLS
+#include <nuttx/arch.h>
+#include <nuttx/irq.h>
+#include <nuttx/i2c/i2c_master.h>
 
-#if defined(CONFIG_ARMV7M_DCACHE)
-#  define PX4_ARCH_DCACHE_ALIGNMENT ARMV7M_DCACHE_LINESIZE
-#  define px4_cache_aligned_data() aligned_data(ARMV7M_DCACHE_LINESIZE)
-#  define px4_cache_aligned_alloc(s) memalign(ARMV7M_DCACHE_LINESIZE,(s))
+#include <io_gpio.h>
+#include "hpm_i2c.h"
+#include "hpm_spi_master.h"
+
+/*  defines the 128 bit UUID as
+ *
+ *  OCOTP 0x410 bits 31:0
+ *  OCOTP 0x420 bits 63:32
+ *
+ *  PX4 uses the words in bigendian order MSB to LSB
+ *   word  [0]    [1]
+ *   bits 63-32, 31-00,
+ */
+#define PX4_CPU_UUID_BYTE_LENGTH                16
+#define PX4_CPU_UUID_WORD32_LENGTH              (PX4_CPU_UUID_BYTE_LENGTH/sizeof(uint32_t))
+
+/* The mfguid will be an array of bytes with
+ * MSD @ index 0 - LSD @ index PX4_CPU_MFGUID_BYTE_LENGTH-1
+ *
+ * It will be converted to a string with the MSD on left and LSD on the right most position.
+ */
+#define PX4_CPU_MFGUID_BYTE_LENGTH              PX4_CPU_UUID_BYTE_LENGTH
+
+// /* define common formating across all commands*/
+
+#define PX4_CPU_UUID_WORD32_FORMAT              "%08x"
+#define PX4_CPU_UUID_WORD32_SEPARATOR           ":"
+
+#define PX4_CPU_UUID_WORD32_UNIQUE_H            0 /* Least significant digits change the most (die wafer,X,Y */
+#define PX4_CPU_UUID_WORD32_UNIQUE_M            1 /* Most significant digits change the least (lot#) */
+
+/*                                                  Separator    nnn:nnn:nnnn     2 char per byte           term */
+#define PX4_CPU_UUID_WORD32_FORMAT_SIZE         (PX4_CPU_UUID_WORD32_LENGTH-1+(2*PX4_CPU_UUID_BYTE_LENGTH)+1)
+#define PX4_CPU_MFGUID_FORMAT_SIZE              ((2*PX4_CPU_MFGUID_BYTE_LENGTH)+1)
+
+#if defined(CONFIG_SPI)
+#define px4_spibus_initialize(bus_num_1based)   hpm_spibus_initialize(bus_num_1based)
+#endif
+
+#if defined(CONFIG_I2C)
+#define px4_i2cbus_initialize(bus_num_1based)   hpm_i2cbus_initialize(bus_num_1based)
+#define px4_i2cbus_uninitialize(pdev)           hpm_i2cbus_uninitialize(pdev)
+#endif
+
+#define px4_arch_configgpio(pinset)              hpm_config_gpio(pinset)
+#define px4_arch_unconfiggpio(pinset)            hpm_unconfig_gpio(pinset)
+#define px4_arch_gpioread(pinset)                hpm_gpio_read(pinset)
+#define px4_arch_gpiowrite(pinset, value)        hpm_gpio_write(pinset, value)
+#define px4_arch_gpiosetevent(pinset,r,f,e,fp,a) hpm_gpio_setevent(pinset,r,f,e,fp,a)
+
+#if defined(CONFIG_ARCH_DCACHE)
+#  define px4_cache_aligned_alloc(s) kmm_memalign(HPM_L1C_CACHELINE_SIZE,(s))
+#  define px4_cache_aligned_data     aligned_data(HPM_L1C_CACHELINE_SIZE)
 #else
+#  define px4_cache_aligned_alloc kmm_malloc
 #  define px4_cache_aligned_data()
-#  define px4_cache_aligned_alloc malloc
 #endif
 
 
