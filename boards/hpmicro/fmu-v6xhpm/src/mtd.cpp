@@ -20,7 +20,7 @@
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
  * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,spi2
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -36,23 +36,25 @@
 
 #include <nuttx/spi/spi.h>
 #include <px4_platform_common/px4_manifest.h>
+
+#if defined(CONFIG_MTD)
 //                                                              KiB BS    nB
-static const px4_mft_device_t spi5 = {             // FM25V02A on FMUM native: 32K X 8, emulated as (1024 Blocks of 32)
-	.bus_type = px4_mft_device_t::SPI,
+static const px4_mft_device_t qspi_flash = {             // FM25V02A on FMUM native: 32K X 8, emulated as (1024 Blocks of 32)
+	.bus_type = px4_mft_device_t::FLEXSPI,
 	.devid    = SPIDEV_FLASH(0)
 };
-static const px4_mft_device_t i2c3 = {             // 24LC64T on Base  8K 32 X 256
+static const px4_mft_device_t i2c2 = {             // 24LC64T on Base  8K 32 X 256
 	.bus_type = px4_mft_device_t::I2C,
 	.devid    = PX4_MK_I2C_DEVID(3, 0x51)
 };
-static const px4_mft_device_t i2c4 = {             // 24LC64T on IMU   8K 32 X 256
+static const px4_mft_device_t i2c3 = {             // 24LC64T on IMU   8K 32 X 256
 	.bus_type =  px4_mft_device_t::I2C,
 	.devid    =  PX4_MK_I2C_DEVID(4, 0x50)
 };
 
 
 static const px4_mtd_entry_t fmum_fram = {
-	.device = &spi5,
+	.device = &qspi_flash,
 	.npart = 1,
 	.partd = {
 		{
@@ -82,7 +84,7 @@ static const px4_mtd_entry_t base_eeprom = {
 };
 
 static const px4_mtd_entry_t imu_eeprom = {
-	.device = &i2c4,
+	.device = &i2c3,
 	.npart = 3,
 	.partd = {
 		{
@@ -119,7 +121,11 @@ static const px4_mft_entry_s mtd_mft = {
 
 static const px4_mft_entry_s mft_mft = {
 	.type = MFT,
-	.pmft = (void *) system_query_manifest,
+#ifdef BOARD_HAS_HW_SPLIT_VERSIONING
+	.pmft = (void *)system_query_manifest ,//system_query_manifest,待完善
+#else
+	.pmft = (void *)NULL,
+#endif
 };
 
 static const px4_mft_s mft = {
@@ -134,3 +140,4 @@ const px4_mft_s *board_get_manifest(void)
 {
 	return &mft;
 }
+#endif

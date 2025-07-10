@@ -35,7 +35,9 @@
 
 #include <stdint.h>
 
-#include <io_gpio.h>
+#include <hpm_gpio.h>
+// #include <hpm_spi.h>
+
 
 #include <px4_platform_common/constexpr_util.h>
 
@@ -55,7 +57,7 @@ enum Port {
 	PortF,
 	PortX,
 	PortY,
-	PortZ,
+	PortZ
 };
 enum Pin {
 	Pin0 = 0,
@@ -89,7 +91,7 @@ enum Pin {
 	Pin28,
 	Pin29,
 	Pin30,
-	Pin31,
+	Pin31
 };
 struct GPIOPin {
 	Port port;
@@ -109,15 +111,22 @@ static inline constexpr uint32_t getGPIOPort(GPIO::Port port)
 	case GPIO::PortD: return GPIO_PORTD;
 
 	case GPIO::PortE: return GPIO_PORTE;
+#ifdef GPIO_PORTF
 
 	case GPIO::PortF: return GPIO_PORTF;
+#endif
+#ifdef GPIO_PORTX
 
 	case GPIO::PortX: return GPIO_PORTX;
+#endif
+#ifdef GPIO_PORTY
 
 	case GPIO::PortY: return GPIO_PORTY;
+#endif
+#ifdef GPIO_PORTZ
 
 	case GPIO::PortZ: return GPIO_PORTZ;
-
+#endif
 	default: break;
 	}
 
@@ -190,8 +199,6 @@ static inline constexpr uint32_t getGPIOPin(GPIO::Pin pin)
 	case GPIO::Pin30: return GPIO_PIN30;
 
 	case GPIO::Pin31: return GPIO_PIN31;
-
-	default: break;
 	}
 
 	return 0;
@@ -201,7 +208,7 @@ namespace SPI
 {
 
 enum class Bus {
-	SPI0 = 0,
+	SPI0 = 0,// 从0开始
 	SPI1,
 	SPI2,
 	SPI3,

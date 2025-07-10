@@ -34,33 +34,55 @@
 
 /**
  * @file board_identity.c
- * Implementation of HPM based Board identity API
+ * Implementation of STM32 based Board identity API
+ * xiaoyonghui  待完善
  */
 
 #include <px4_platform_common/px4_config.h>
 #include <stdio.h>
 #include <string.h>
-#include "hpm_romapi.h"
+#include "hpm_sdk/drivers/inc/hpm_romapi_xpi_def.h"
+#include <px4_arch/romapi.h>
 
-/**
- * For special cases, specific boards may need to override the UUID, instead of using the generic
- * PX4 GUID (gettable via 'board_get_px4_guid_formated' function). In that case we define the cascaded
- * UUID function getters to incorporate the overridden UUID into the GUID.
- */
+
+#define CPU_UUID_BYTE_FORMAT_ORDER          {3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8}
+#define SWAP_UINT32(x) (((x) >> 24) | (((x) & 0x00ff0000) >> 8) | (((x) & 0x0000ff00) << 8) | ((x) << 24))
 
 static const uint16_t soc_arch_id = PX4_SOC_ARCH_ID;
 
-#define OTP_CHIP_UUID_IDX_START (88U)
-#define OTP_CHIP_UUID_IDX_END   (91U)
+
+/* A type suitable for holding the reordering array for the byte format of the UUID
+ */
+
+typedef const uint8_t uuid_uint8_reorder_t[PX4_CPU_UUID_BYTE_LENGTH];
 
 void board_get_uuid32(uuid_uint32_t uuid_words)
 {
-	uint32_t word_idx = 0;
-	for (uint32_t i = OTP_CHIP_UUID_IDX_START; i <= OTP_CHIP_UUID_IDX_END; i++) {
-		uuid_words[word_idx] = ROM_API_TABLE_ROOT->otp_driver_if->read_from_shadow(i);
-		word_idx++;
+    uint32_t word_idx = 0;
+    for (uint32_t i = OTP_CHIP_UUID_IDX_START; i <= OTP_CHIP_UUID_IDX_END; i++) {
+        uuid_words[word_idx++] = g_xpi_otp_driver_interface->read_from_shadow(i);
+    }
+}
+
+void board_get_uuid(uuid_byte_t uuid_bytes)
+{
+	uuid_uint8_reorder_t reorder = CPU_UUID_BYTE_FORMAT_ORDER;
+	union {
+		uuid_byte_t b;
+		uuid_uint32_t w;
+	} id;
+
+	/* Copy the serial from the chips non-write memory */
+
+	board_get_uuid32(id.w);
+
+	/* swap endianess */
+
+	for (int i = 0; i < PX4_CPU_UUID_BYTE_LENGTH; i++) {
+		uuid_bytes[i] = id.b[reorder[i]];
 	}
 }
+
 
 int board_get_uuid32_formated(char *format_buffer, int size,
 			      const char *format,
@@ -83,16 +105,75 @@ int board_get_uuid32_formated(char *format_buffer, int size,
 	return 0;
 }
 
-int board_get_mfguid_formated(char *format_buffer, int size)
+int board_get_mfguid(mfguid_t mfgid)
 {
-	board_get_uuid32_formated(format_buffer, size, "%02x", NULL);
-	return strlen(format_buffer);
+	uuid_uint32_t uuid;
+	board_get_uuid32(uuid);
+	uint8_t  *rv = &mfgid[0];
+
+	for (unsigned i = 0; i < PX4_CPU_UUID_WORD32_LENGTH; i++) {
+		uint32_t uuid_bytes = SWAP_UINT32(uuid[(PX4_CPU_UUID_WORD32_LENGTH - 1) - i]);
+		memcpy(rv, &uuid_bytes, sizeof(uint32_t));
+		rv += sizeof(uint32_t);
+	}
+
+	return PX4_CPU_MFGUID_BYTE_LENGTH;
 }
 
+int board_get_mfguid_formated(char *format_buffer, int size)
+{
+	mfguid_t mfguid;
+
+	board_get_mfguid(mfguid);
+	int offset  = 0;
+
+	for (unsigned i = 0; offset < size && i < PX4_CPU_MFGUID_BYTE_LENGTH; i++) {
+		offset += snprintf(&format_buffer[offset], size - offset, "%02x", mfguid[i]);
+	}
+
+	return offset;
+}
+
+int board_get_px4_guid(px4_guid_t px4_guid)
+{
+	uint8_t  *pb = (uint8_t *) &px4_guid[0];
+	*pb++ = (soc_arch_id >> 8) & 0xff;
+	*pb++ = (soc_arch_id & 0xff);
+
+	int j = PX4_GUID_BYTE_LENGTH - (sizeof(soc_arch_id) + PX4_CPU_UUID_BYTE_LENGTH);
+	if(j > 0){
+		for (int i = 0; i < j; i++) {
+			*pb++ = 0;
+		}
+	}
+
+	uuid_uint32_t chip_uuid;
+	board_get_uuid32(chip_uuid);
+
+	for (unsigned i = 0; i < PX4_CPU_UUID_WORD32_LENGTH; i++) {
+		uint32_t uuid_bytes = SWAP_UINT32(chip_uuid[(PX4_CPU_UUID_WORD32_LENGTH - 1) - i]);
+		memcpy(pb, &uuid_bytes, sizeof(uint32_t));
+		pb += sizeof(uint32_t);
+	}
+
+	return PX4_GUID_BYTE_LENGTH;
+}
 
 int board_get_px4_guid_formated(char *format_buffer, int size)
 {
-	int offset = snprintf(format_buffer, size, "%04x", soc_arch_id);
-	size -= offset;
-	return board_get_mfguid_formated(&format_buffer[offset], size);
+	px4_guid_t px4_guid;
+	board_get_px4_guid(px4_guid);
+	int offset  = 0;
+
+	/* size should be 2 per byte + 1 for termination
+	 * So it needs to be odd
+	 */
+	size = size & 1 ? size : size - 1;
+
+	/* Discard from MSD */
+	for (unsigned i = PX4_GUID_BYTE_LENGTH - size / 2; offset < size && i < PX4_GUID_BYTE_LENGTH; i++) {
+		offset += snprintf(&format_buffer[offset], size - offset, "%02x", px4_guid[i]);
+	}
+
+	return offset;
 }

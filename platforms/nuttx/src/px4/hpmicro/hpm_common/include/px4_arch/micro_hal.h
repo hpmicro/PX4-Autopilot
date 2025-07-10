@@ -28,8 +28,11 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ * 修改：xiaoyonghui 2024年05月20日13:29:54
  ****************************************************************************/
 #pragma once
+
+
 
 #include <nuttx/kmalloc.h>
 #include <px4_platform/micro_hal.h>
@@ -39,9 +42,9 @@ __BEGIN_DECLS
 #include <nuttx/irq.h>
 #include <nuttx/i2c/i2c_master.h>
 
-#include <io_gpio.h>
-#include "hpm_i2c.h"
-#include "hpm_spi_master.h"
+#include <hpm_gpio.h>
+#include <hpm_i2c.h>
+#include <hpm_spi_master.h>
 
 /*  defines the 128 bit UUID as
  *
@@ -83,11 +86,11 @@ __BEGIN_DECLS
 #define px4_i2cbus_uninitialize(pdev)           hpm_i2cbus_uninitialize(pdev)
 #endif
 
-#define px4_arch_configgpio(pinset)              hpm_config_gpio(pinset)
-#define px4_arch_unconfiggpio(pinset)            hpm_unconfig_gpio(pinset)
-#define px4_arch_gpioread(pinset)                hpm_gpio_read(pinset)
-#define px4_arch_gpiowrite(pinset, value)        hpm_gpio_write(pinset, value)
-#define px4_arch_gpiosetevent(pinset,r,f,e,fp,a) hpm_gpio_setevent(pinset,r,f,e,fp,a)
+#define px4_arch_configgpio(pinset)             hpm_config_gpio(pinset)
+#define px4_arch_unconfiggpio(pinset)           hpm_unconfig_gpio(pinset)
+#define px4_arch_gpioread(pinset)               hpm_gpio_read(pinset)
+#define px4_arch_gpiowrite(pinset, value)       hpm_gpio_write(pinset, value)
+#define px4_arch_gpiosetevent(pinset,r,f,e,fp,a)  hpm_gpio_setevent(pinset,r,f,e,fp,a)
 
 #if defined(CONFIG_ARCH_DCACHE)
 #  define px4_cache_aligned_alloc(s) kmm_memalign(HPM_L1C_CACHELINE_SIZE,(s))

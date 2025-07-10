@@ -1,3 +1,0 @@
-#!/bin/sh
-
-mavlink start -d /dev/ttyACM0

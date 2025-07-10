@@ -41,12 +41,12 @@
 #include <time.h>
 #include <fixedmath.h>
 
+// #include "dwt.h"
 #include "riscv_internal.h"
 
 #include <nuttx/clock.h>
 
-#include "board.h"
-#include "hpm_csr_drv.h"
+#include <arch/board/board.h>
 
 #if defined(CONFIG_SCHED_CRITMONITOR) || defined(CONFIG_SCHED_IRQMONITOR)
 
@@ -60,7 +60,7 @@
 
 uint32_t up_critmon_gettime(void)
 {
-	return (uint32_t)hpm_csr_get_core_cycle();
+	return getreg32(DWT_CYCCNT);
 }
 
 /************************************************************************************
@@ -71,7 +71,7 @@ void up_critmon_convert(uint32_t elapsed, FAR struct timespec *ts)
 {
 	b32_t b32elapsed;
 
-	b32elapsed  = itob32(elapsed) / BOARD_CPU_FREQ;
+	b32elapsed  = itob32(elapsed) / STM32_SYSCLK_FREQUENCY;
 	ts->tv_sec  = b32toi(b32elapsed);
 	ts->tv_nsec = NSEC_PER_SEC * b32frac(b32elapsed) / b32ONE;
 }

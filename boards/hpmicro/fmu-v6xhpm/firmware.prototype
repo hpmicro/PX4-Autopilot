@@ -1,5 +1,5 @@
 {
-    "board_id": 66,
+    "board_id": 5300,
     "magic": "PX4FWv1",
     "description": "Firmware for the PX4FMUv6XHPM board",
     "image": "",
@@ -7,7 +7,7 @@
     "summary": "PX4FMUv6XHPM",
     "version": "0.1",
     "image_size": 0,
-    "image_maxsize": 4063232,
+    "image_maxsize": 1048576,
     "git_identity": "",
     "board_revision": 0
 }

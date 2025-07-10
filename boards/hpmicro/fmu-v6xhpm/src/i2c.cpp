@@ -32,10 +32,60 @@
  ****************************************************************************/
 
 #include <px4_arch/i2c_hw_description.h>
+#include <drivers/drv_hrt.h>
+
+#if defined(CONFIG_I2C)
+/****************************************************************************
+ * Name: hpm6750_i2cbus_pins_initialize
+ *
+ * Description:
+ *   Initialize the selected I2C port pins
+ *
+ * Input Parameters:
+ *   Port number (for hardware that has multiple CAN interfaces)
+ *
+ * Returned Value:
+ *   Zero on success; a negated errno on failure
+ *
+ ****************************************************************************/
+int hpm_i2cbus_pins_initialize(int port)
+{
+	switch(port){
+		case 0:
+#if defined(CONFIG_HPM_I2C0)
+			px4_arch_configgpio(GPIO_I2C0_SCL);
+			px4_arch_configgpio(GPIO_I2C0_SDA);
+#endif
+			break;
+		case 1:
+#if defined(CONFIG_HPM_I2C1)
+			px4_arch_configgpio(GPIO_I2C1_SCL);
+			px4_arch_configgpio(GPIO_I2C1_SDA);
+#endif
+			break;
+		case 2:
+#if defined(CONFIG_HPM_I2C2)
+			px4_arch_configgpio(GPIO_I2C2_SCL);
+			px4_arch_configgpio(GPIO_I2C2_SDA);
+#endif
+			break;
+		case 3:
+#if defined(CONFIG_HPM_I2C3)
+			px4_arch_configgpio(GPIO_I2C3_SCL);
+			px4_arch_configgpio(GPIO_I2C3_SDA);
+#endif
+			break;
+	}
+
+ return 0;
+}
 
 constexpr px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS] = {
+	initI2CBusExternal(0),
 	initI2CBusExternal(1),
 	initI2CBusExternal(2),
-	initI2CBusExternal(3),
-	initI2CBusInternal(4),
+	initI2CBusInternal(3),
 };
+
+
+#endif

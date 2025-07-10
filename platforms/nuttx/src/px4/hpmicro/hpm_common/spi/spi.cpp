@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2024 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +44,8 @@
 #include <arch/board/board.h>
 #include <riscv_internal.h>
 #include <chip.h>
-#include "io_gpio.h"
+#include <hpm_gpio.h>
+#include <stdio.h>
 
 
 #if defined(CONFIG_SPI)
@@ -86,8 +87,6 @@ __EXPORT void hpm_spiinitialize()
 		case 4: _spi_bus4 = &px4_spi_buses[i]; break;
 
 		case 5: _spi_bus5 = &px4_spi_buses[i]; break;
-		
-		default: break;
 		}
 	}
 
@@ -164,7 +163,7 @@ static inline void hpm_spixselect(const px4_spi_bus_t *bus, struct spi_dev_s *de
 }
 
 /************************************************************************************
- * Name: hpm_spi0select and hpm_spi0status
+ * Name: hpm_spi0select and hpm_spi6status
  *
  * Description:
  *   Called by hpm spi driver on bus 0.

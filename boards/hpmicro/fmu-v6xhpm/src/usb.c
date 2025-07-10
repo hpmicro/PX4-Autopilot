@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2016 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2016, 2018 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
- * @file px4fmu_usb.c
+ * @file usb.c
  *
  * Board-specific USB functions.
  */
@@ -51,11 +51,7 @@
 #include <nuttx/usb/usbdev.h>
 #include <nuttx/usb/usbdev_trace.h>
 
-#include <arm_internal.h>
-#include <chip.h>
-#include <stm32_gpio.h>
-#include <stm32_otg.h>
-#include "board_config.h"
+#include <riscv_internal.h>
 
 /************************************************************************************
  * Definitions
@@ -68,38 +64,64 @@
 /************************************************************************************
  * Public Functions
  ************************************************************************************/
+int hpm_usb_initialize(void)
+{
 
+	return 0;
+}
 /************************************************************************************
- * Name: stm32_usbinitialize
+ * Name:  hpm_usbpullup
  *
  * Description:
- *   Called to setup USB-related GPIO pins for the PX4FMU board.
+ *   If USB is supported and the board supports a pullup via GPIO (for USB software
+ *   connect and disconnect), then the board software must provide hpm_usbpullup.
+ *   See include/nuttx/usb/usbdev.h for additional description of this method.
+ *   Alternatively, if no pull-up GPIO the following EXTERN can be redefined to be
+ *   NULL.
  *
  ************************************************************************************/
 
-__EXPORT void stm32_usbinitialize(void)
+__EXPORT
+int hpm_usbpullup(FAR struct usbdev_s *dev, bool enable)
 {
-	/* The OTG FS has an internal soft pull-up */
 
-	/* Configure the OTG FS VBUS sensing GPIO, Power On, and Overcurrent GPIOs */
-
-#ifdef CONFIG_STM32H7_OTGFS
-	stm32_configgpio(GPIO_OTGFS_VBUS);
-#endif
+	return OK;
 }
 
 /************************************************************************************
- * Name:  stm32_usbsuspend
+ * Name:  hpm_usbsuspend
  *
  * Description:
- *   Board logic must provide the stm32_usbsuspend logic if the USBDEV driver is
+ *   Board logic must provide the hpm_usbsuspend logic if the USBDEV driver is
  *   used.  This function is called whenever the USB enters or leaves suspend mode.
  *   This is an opportunity for the board logic to shutdown clocks, power, etc.
  *   while the USB is suspended.
  *
  ************************************************************************************/
 
-__EXPORT void stm32_usbsuspend(FAR struct usbdev_s *dev, bool resume)
+__EXPORT
+void hpm_usbsuspend(FAR struct usbdev_s *dev, bool resume)
 {
 	uinfo("resume: %d\n", resume);
 }
+
+
+/************************************************************************************
+ * Name: board_read_VBUS_state
+ *
+ * Description:
+ *   All boards must provide a way to read the state of VBUS, this my be simple
+ *   digital input on a GPIO. Or something more complicated like a Analong input
+ *   or reading a bit from a USB controller register.
+ *
+ * Returns -  0 if connected.
+ *
+ ************************************************************************************/
+#ifndef GPIO_OTGFS_VBUS
+
+int board_read_VBUS_state(void){
+
+	return 0;
+}
+
+#endif
