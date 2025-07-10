@@ -19,6 +19,7 @@
 ############################################################################
 
 
+HPM_CHIP_SERIES = HPM6700
 HPM_CHIP_SELECT = HPM6750
 HPM_BOARD_SELECT = px4_fmu_v6xhpm
 CONFIG_XIP_FLASH_SIZE = 16M
@@ -32,9 +33,10 @@ LDFLAGS += --defsym=_nx_heap_size=$(CONFIG_SYSTEM_HEAPSIZE)
 
 # Add include directories
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch
-CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SELECT)
-CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SELECT)$(DELIM)boot
-CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)ip
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch$(DELIM)riscv$(DELIM)l1c
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)${HPM_CHIP_SERIES}$(DELIM)$(HPM_CHIP_SELECT)
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)${HPM_CHIP_SERIES}$(DELIM)$(HPM_CHIP_SELECT)$(DELIM)boot
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)${HPM_CHIP_SERIES}$(DELIM)ip
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)drivers$(DELIM)inc
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)boards$(DELIM)$(HPM_BOARD_SELECT)
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components
@@ -53,4 +55,5 @@ CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)rtl8201
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)rtl8211
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)spi
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)uart_lin
 CFLAGS += -I$(CHIP_DIR)$(DELIM)

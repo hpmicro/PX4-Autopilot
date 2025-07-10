@@ -183,4 +183,4 @@ define ARCHIVE
     $(AR) $1 $(2)
 endef
 
--include ${BOARD_DIR}/scripts/Make.defs
+-include ${PX4_BOARD_DIR}/scripts/Make.defs

@@ -1,9 +1,12 @@
-
 if(CONFIG_ARCH_DPFPU)
-	message(STATUS "Enabling double FP precision hardware instructions")
-	set(cpu_flags "-march=rv32gc -mabi=lp32d -mcmodel=medany")
+    set(cpu_flags "-march=rv32gc_zifencei -mabi=ilp32d")
+    message(STATUS "Enabling double FP precision hardware instructions ${cpu_flags}")
+elseif(CONFIG_ARCH_FPU)
+    set(cpu_flags "-march=rv32imacf_zifencei -mabi=ilp32f")
+    message(STATUS "Enabling single FP precision hardware instructions ${cpu_flags}")
 else()
-	set(cpu_flags "-march=rv32imac -mabi=lp32 -mcmodel=medany")
+    set(cpu_flags "-march=rv32imac_zifencei -mabi=ilp32")
+    message(STATUS "Disabling FP precision hardware instructions ${cpu_flags}")
 endif()
 
 set(CMAKE_C_FLAGS "${cpu_flags}" CACHE STRING "" FORCE)

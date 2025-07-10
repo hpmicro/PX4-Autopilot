@@ -78,6 +78,21 @@ inline bool isinf(float value) { return __builtin_isinf_sign(value); }
 inline bool isinf(double value) { return __builtin_isinf_sign(value); }
 inline bool isinf(long double value) { return __builtin_isinf_sign(value); }
 
+#if 1
+/*
+ * NuttX has no usable C++ math library, so we need to provide the needed definitions here manually.
+ */
+#define NUTTX_WRAP_MATH_FUN_UNARY(name)                                   \
+	inline float       name(float x)       { return ::name##f(x); }          \
+	inline double      name(double x)      { return ::name(x); }             \
+	inline long double name(long double x) { return ::name(x); }
+
+#define NUTTX_WRAP_MATH_FUN_BINARY(name)                                                    \
+	inline float       name(float x, float y)             { return ::name##f(x, y); }          \
+	inline double      name(double x, double y)           { return ::name(x, y); }             \
+	inline long double name(long double x, long double y) { return ::name(x, y); }
+
+#else
 /*
  * NuttX has no usable C++ math library, so we need to provide the needed definitions here manually.
  */
@@ -90,6 +105,7 @@ inline bool isinf(long double value) { return __builtin_isinf_sign(value); }
 	inline float       name(float x, float y)             { return ::name##f(x, y); }          \
 	inline double      name(double x, double y)           { return ::name(x, y); }             \
 	inline long double name(long double x, long double y) { return ::name##l(x, y); }
+#endif
 
 NUTTX_WRAP_MATH_FUN_UNARY(fabs)
 NUTTX_WRAP_MATH_FUN_UNARY(log)
