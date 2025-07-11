@@ -272,7 +272,9 @@ else()
 		-Wl,--gc-sections
 
 		-Wl,--start-group
+		-Wl,--whole-archive
 			${nuttx_libs}
+		-Wl,--no-whole-archive
 		-Wl,--end-group
 
 		m
