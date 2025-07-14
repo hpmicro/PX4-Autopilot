@@ -294,7 +294,27 @@
                 "clear": false
             },
             "problemMatcher": []
-        }
+        },
+        {
+            "label": "Launch OpenOCD",
+            "command": "sudo",
+            "args": [
+                "/usr/bin/openocd",
+                "-s",
+                "${HPM_SDK_BASE}/boards/openocd",
+                "-f",
+                "${input:openocd.interface}",
+                "-f",
+                "${input:openocd.config1}",
+                "-f",
+                "${input:openocd.config2}",
+                // "-c",
+                // "\"bindto 0.0.0.0\""
+            ],
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
     ],
     "inputs": [
         {
@@ -305,6 +325,46 @@
                 "default"
             ],
             "default": "default"
+        },
+        {
+            "id": "openocd.interface",
+            "type": "pickString",
+            "description": "Select the interface for OpenOCD",
+            "options": [
+                "${HPM_SDK_BASE}/boards/openocd/probes/jlink.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/probes/cmsis_dap.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/probes/ft2232.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/probes/ft2232h.cfg",
+            ],
+            "default": "${HPM_SDK_BASE}/boards/openocd/probes/cmsis_dap.cfg",
+        },
+        {
+            "id": "openocd.config1",
+            "type": "pickString",
+            "description": "Select the config1 for OpenOCD",
+            "options": [
+                "${HPM_SDK_BASE}/boards/openocd/soc/hpm6280-single-core.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/soc/hpm6750-single-core.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/soc/hpm6e80-single-core.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/soc/hpm6880.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/soc/hpm6360.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/soc/hpm5300.cfg",
+            ],
+            "default": "${HPM_SDK_BASE}/boards/openocd/soc/hpm6750-single-core.cfg",
+        },
+        {
+            "id": "openocd.config2",
+            "type": "pickString",
+            "description": "Select the config2 for OpenOCD",
+            "options": [
+                "${HPM_SDK_BASE}/boards/openocd/boards/hpm6750evk2.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/boards/hpm5300evk.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/boards/hpm6200evk.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/boards/hpm6300evk.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/boards/hpm6800evk.cfg",
+                "${HPM_SDK_BASE}/boards/openocd/boards/hpm6e00evk.cfg",
+            ],
+            "default": "${HPM_SDK_BASE}/boards/openocd/boards/hpm6750evk2.cfg",
         }
     ]
 }
