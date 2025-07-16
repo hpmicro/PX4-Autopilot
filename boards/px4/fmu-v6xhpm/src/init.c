@@ -46,23 +46,22 @@
  ****************************************************************************/
 
 #include "board_config.h"
-#include <fcntl.h>
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <debug.h>
 #include <errno.h>
-#include <nuttx/irq.h>
+
 #include <nuttx/config.h>
 #include <nuttx/board.h>
 #include <nuttx/spi/spi.h>
-#include <nuttx/spi/spi_transfer.h>
 #include <nuttx/sdio.h>
 #include <nuttx/mmcsd.h>
 #include <nuttx/analog/adc.h>
 #include <nuttx/mm/gran.h>
 #include <chip.h>
-// #include "hpm_serial.h"
+
 #include <arch/board/board.h>
 #include "riscv_internal.h"
 
@@ -76,9 +75,7 @@
 #include <px4_platform/board_determine_hw_info.h>
 #include <px4_platform/board_dma_alloc.h>
 
-#include "hpm_sdk/drivers/inc/hpm_common.h"
-
-
+#include "hpm_common.h"
 #ifdef CONFIG_HPM_USBDEV
 #  include "hpm_usbdev.h"
 #endif
@@ -109,27 +106,6 @@ __END_DECLS
  ************************************************************************************/
 __EXPORT void board_peripheral_reset(int ms)
 {
-	/* set the peripheral rails off */
-
-	// VDD_5V_PERIPH_EN(false);
-	// board_control_spi_sensors_power(false, 0xffff);
-	// VDD_3V3_SENSORS4_EN(false);
-
-	// bool last = READ_VDD_3V3_SPEKTRUM_POWER_EN();
-	// /* Keep Spektum on to discharge rail*/
-	// VDD_3V3_SPEKTRUM_POWER_EN(false);
-
-	// /* wait for the peripheral rail to reach GND */
-	// usleep(ms * 1000);
-	// syslog(LOG_DEBUG, "reset done, %d ms\n", ms);
-
-	// /* re-enable power */
-
-	// /* switch the peripheral rail back on */
-	// VDD_3V3_SPEKTRUM_POWER_EN(last);
-	// board_control_spi_sensors_power(true, 0xffff);
-	// VDD_3V3_SENSORS4_EN(true);
-	// VDD_5V_PERIPH_EN(true);
 
 }
 
@@ -146,14 +122,6 @@ __EXPORT void board_peripheral_reset(int ms)
  ************************************************************************************/
 __EXPORT void board_on_reset(int status)
 {
-	// for (int i = 0; i < DIRECT_PWM_OUTPUT_CHANNELS; ++i) {
-	// 	px4_arch_configgpio(io_timer_channel_get_gpio_output(i));
-	// }
-
-	// if (status >= 0) {
-	// 	up_mdelay(6);
-	// }
-
 
 }
 
@@ -170,30 +138,6 @@ __EXPORT void board_on_reset(int status)
 __EXPORT void
 hpm_boardinitialize(void)
 {
-	// board_on_reset(-1); /* Reset PWM first thing */
-
-	// /* configure LEDs */
-
-	// board_autoled_initialize();
-
-	hpm_config_gpio(UART_LED1_PROBE_GPIO);
-	hpm_config_gpio(UART_LED2_PROBE_GPIO);
-	hpm_config_gpio(UART_LED3_PROBE_GPIO);
-
-
-	hpm_gpio_write(UART_LED1_PROBE_GPIO, 0);
-	hpm_gpio_write(UART_LED2_PROBE_GPIO, 1);
-	hpm_gpio_write(UART_LED3_PROBE_GPIO, 1);
-
-	// /* configure pins */
-
-	// const uint32_t gpio[] = PX4_GPIO_INIT_LIST;
-	// px4_gpio_init(gpio, arraySize(gpio));
-
-	// /* configure USB interfaces */
-
-
-	// VDD_3V3_ETH_POWER_EN(true);
 
 }
 
@@ -223,107 +167,13 @@ hpm_boardinitialize(void)
 
  __EXPORT int board_app_initialize(uintptr_t arg)
 {
-	// int ret = -1;
-// #if !defined(BOOTLOADER)
-
-// 	/* Power on Interfaces */
-// 	VDD_3V3_SD_CARD_EN(true);
-// 	VDD_5V_PERIPH_EN(true);
-// 	VDD_5V_HIPOWER_EN(true);
-// 	VDD_3V3_SENSORS4_EN(true);
-// 	VDD_3V3_SPEKTRUM_POWER_EN(true);
-
-// 	/* Need hrt running before using the ADC */
-	// px4_arch_configgpio(UART_LED_PROBE_GPIO);
-	// px4_arch_gpiowrite(UART_LED_PROBE_GPIO, 0);
-
-#ifdef CONFIG_HPM_USBDEV
-/* 注意: 先于 px4_platform_init()初始化，但不能放于hpm_boardinitialize()中，
-*	与board_read_VBUS_state()状态相关
-*/
-	hpm_usbdev_initialize(CONFIG_HPM_USBDEV_INSTANCE);
-#endif
+	printf("hello world\n");
 
 	px4_platform_init();
 
-
-// 	// Use the default HW_VER_REV(0x0,0x0) for Ramtron
-
-#if defined(CONFIG_SPI)
-	hpm_spiinitialize();
-#endif
-	/* Configure the HW based on the manifest */
-
 	px4_platform_configure();
 
-// 	if (OK == board_determine_hw_info()) {
-// 		syslog(LOG_INFO, "[boot] Rev 0x%1x : Ver 0x%1x %s\n", board_get_hw_revision(), board_get_hw_version(),
-// 		       board_get_hw_type_name());
-
-// 	} else {
-// 		syslog(LOG_ERR, "[boot] Failed to read HW revision and version\n");
-// 	}
-
-// 	/* Configure the Actual SPI interfaces (after we determined the HW version)  */
-#if defined(CONFIG_SPI)
-	hpm_spiinitialize();
-
-	board_spi_reset(10, 0xffff);
-
-#endif
-
-// 	/* Configure the DMA allocator */
-
-// 	if (board_dma_alloc_init() < 0) {
-// 		syslog(LOG_ERR, "[boot] DMA alloc FAILED\n");
-// 	}
-
-// #  if defined(SERIAL_HAVE_RXDMA)
-// 	// set up the serial DMA polling at 1ms intervals for received bytes that have not triggered a DMA event.
-// 	static struct hrt_call serial_dma_call;
-// 	hrt_call_every(&serial_dma_call, 1000, 1000, (hrt_callout)hpm_serial_dma_poll, NULL);
-// #  endif
-
-// 	/* initial LED state */
-// 	drv_led_start();
-// 	led_off(LED_RED);
-// 	led_on(LED_GREEN); // Indicate Power.
-// 	led_off(LED_BLUE);
-
-// 	if (board_hardfault_init(2, true) != 0) {
-// 		led_on(LED_RED);
-// 	}
-
-// 	// Ensure Power is off for > 10 mS
-// 	usleep(15 * 1000);
-// 	VDD_3V3_SD_CARD_EN(true);
-// 	usleep(500 * 1000);
-
-// #  ifdef CONFIG_MMCSD
-// 	int ret = hpm_sdio_initialize();
-
-// 	if (ret != OK) {
-// 		led_on(LED_RED);
-// 		return ret;
-// 	}
-
-// #  endif /* CONFIG_MMCSD */
-
-// #endif /* !defined(BOOTLOADER) */
-// #ifdef CONFIG_BOARD_LATE_INITIALIZE
-//   /* Board initialization already performed by board_late_initialize() */
-
-//   return OK;
-// #else
-  /* Perform board-specific initialization */
-
-	// printf("flash option: %lx %lx %lx %lx", option[0],option[1],option[2],option[3]);
-	// printf("hrt absolute time: %llu\n",hrt_absolute_time());
-
 	return 0;
-// #endif
-	// return OK;
-
 }
 
 

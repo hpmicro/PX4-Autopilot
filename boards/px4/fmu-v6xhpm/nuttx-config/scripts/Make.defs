@@ -25,11 +25,6 @@ HPM_BOARD_SELECT = px4_fmu_v6xhpm
 CONFIG_XIP_FLASH_SIZE = 16M
 
 CFLAGS += -DFLASH_XIP
-LDFLAGS += --defsym=_flash_size=$(CONFIG_XIP_FLASH_SIZE)
-
-LDFLAGS += --defsym=_stack_size=$(CONFIG_IDLETHREAD_STACKSIZE)
-LDFLAGS += --defsym=_heap_size=$(CONFIG_NON_OS_HEAPSIZE)
-LDFLAGS += --defsym=_nx_heap_size=$(CONFIG_SYSTEM_HEAPSIZE)
 
 # Add include directories
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch
