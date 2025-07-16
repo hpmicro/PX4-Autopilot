@@ -169,7 +169,24 @@ hpm_boardinitialize(void)
 {
 	printf("hello world\n");
 
+#ifdef CONFIG_HPM_USBDEV
+	hpm_usbdev_initialize(CONFIG_HPM_USBDEV_INSTANCE);
+#endif
+
 	px4_platform_init();
+
+	/* Configure the DMA allocator */
+
+	if (board_dma_alloc_init() < 0) {
+		syslog(LOG_ERR, "[boot] DMA alloc FAILED\n");
+	}
+
+	/* initial LED state */
+	// drv_led_start();
+
+	// led_off(LED_RED);
+	// led_off(LED_GREEN);
+	// led_off(LED_BLUE);
 
 	px4_platform_configure();
 

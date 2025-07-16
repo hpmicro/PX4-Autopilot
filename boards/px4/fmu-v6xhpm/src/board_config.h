@@ -44,7 +44,6 @@
  ****************************************************************************************************/
 
 #include <nuttx/config.h>
-#include <board_config.h>
 
 #include <px4_platform_common/px4_config.h>
 #include <nuttx/compiler.h>
@@ -52,29 +51,11 @@
 
 #include <hpm_gpio.h>
 
-#define PARAMETERS_LIB_DISABLE   // 定义使禁用参数库（因为存在问题）
+#define HRT_TIMER 1
+#define HRT_TIMER_CHANNEL 1 // HPM GPTMR channel 1
 
-/* USB OTG FS
- */
-// #define GPIO_OTGFS_VBUS
-
-
-
-/* High-resolution timer */
-
-#define HRT_TIMER    		     1
-#define HRT_TIMER_CHANNEL            1  /* use capture/compare channel 4 */
-
-
-
-/* HW Version and Revision drive signals Default to 1 to detect */
-// #define BOARD_HAS_HW_SPLIT_VERSIONING
-
-
-#define UART_LED1_PROBE_GPIO (GPIO_OUTPUT | GPIO_OUTPUT_SET | GPIO_PORTB | GPIO_PIN29)
-#define UART_LED2_PROBE_GPIO (GPIO_OUTPUT | GPIO_OUTPUT_SET | GPIO_PORTB | GPIO_PIN30)
-#define UART_LED3_PROBE_GPIO (GPIO_OUTPUT | GPIO_OUTPUT_SET | GPIO_PORTB | GPIO_PIN31)
-
+/* This board provides a DMA pool and APIs */
+#define BOARD_DMA_ALLOC_POOL_SIZE 5120
 
 #define BOARD_ENABLE_CONSOLE_BUFFER
 
