@@ -53,6 +53,8 @@
 
 #include <riscv_internal.h>
 
+#include "hpm_usb_drv.h"
+
 /************************************************************************************
  * Definitions
  ************************************************************************************/
@@ -117,11 +119,7 @@ void hpm_usbsuspend(FAR struct usbdev_s *dev, bool resume)
  * Returns -  0 if connected.
  *
  ************************************************************************************/
-#ifndef GPIO_OTGFS_VBUS
-
 int board_read_VBUS_state(void){
 
 	return 0;
 }
-
-#endif
