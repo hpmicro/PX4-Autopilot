@@ -133,7 +133,7 @@
 *
 * These are suitable for use with a 32-bit timer/counter clocked
 * at 100MHz.  The high-resolution timer need only guarantee that it
-* not wrap more than once in the 42.949s period for absolute
+* not wrap more than once in the 5s period for absolute
 * time to be consistently maintained.
 *
 * The minimum deadline must be such that the time taken between
@@ -141,7 +141,7 @@
 * result in missing the deadline.
 */
 #define HRT_INTERVAL_MIN	50
-#define HRT_INTERVAL_MAX	4294951760LL
+#define HRT_INTERVAL_MAX	5000000    /* unit: us */
 
 /*
 * Period of the free-running counter, in microseconds.
@@ -279,8 +279,8 @@ static void hrt_tim_init(void)
 	gptmr_channel_get_default_config(HRT_TIMER_BASE, &config);
 	config.mode = gptmr_work_mode_capture_at_both_edge;
 	config.cmp[0] = 1000 * HRT_TIMER_FREQ_MHZ;    /* 1ms */
-	config.cmp[1] = 0xFFFFFFFFu;    /* HRT_COUNTER_PERIOD - 1 */
-	config.reload = 0xFFFFFFFFu;    /* HRT_COUNTER_PERIOD - 1 */
+	config.cmp[1] = 0xFFFFFFFFu;
+	config.reload = 0xFFFFFFFFu;
 	gptmr_channel_config(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, &config, false);
 	gptmr_channel_reset_count(HRT_TIMER_BASE, HRT_TIMER_CHANNEL);
 	gptmr_start_counter(HRT_TIMER_BASE, HRT_TIMER_CHANNEL);
@@ -332,7 +332,7 @@ static void hrt_ppm_decode(uint32_t status)
 		}
 	}
 
-	count /= HRT_TIMER_FREQ_MHZ;    /* To us */
+	count /= HRT_TIMER_FREQ_MHZ;    /* Unit: 1us */
 
 	/* how long since the last edge? - this handles counter wrapping implicitly. */
 	width = count - ppm.last_edge;
@@ -481,7 +481,7 @@ hrt_tim_isr(int irq, void *context, void *arg)
 {
 	/* grab the timer for latency tracking purposes */
 
-	latency_actual = rCNT / HRT_TIMER_FREQ_MHZ;    /* To us */
+	latency_actual = rCNT;    /* Unit: 0.01us */
 
 	/* copy interrupt status */
 	uint32_t status = gptmr_get_status(HRT_TIMER_BASE);
@@ -539,7 +539,7 @@ hrt_absolute_time(void)
 	flags = px4_enter_critical_section();
 
 	/* get the current counter value */
-	count = rCNT;
+	count = rCNT / HRT_TIMER_FREQ_MHZ;    /* Unit: 1us */
 
 	/*
 	 * Determine whether the counter has wrapped since the
@@ -560,7 +560,7 @@ hrt_absolute_time(void)
 
 	px4_leave_critical_section(flags);
 
-	return (abstime / HRT_TIMER_FREQ_MHZ);    /* To us */
+	return abstime;
 }
 
 /**
@@ -799,9 +799,9 @@ hrt_call_reschedule()
 	hrtinfo("schedule for %ul at %ul\n", (unsigned long)(deadline & 0xffffffff), (unsigned long)(now & 0xffffffff));
 
 	/* set the new compare value and remember it for latency tracking */
-	latency_baseline = deadline;
+	latency_baseline = deadline * HRT_TIMER_FREQ_MHZ;    /* Unit: 0.01us */
 
-	gptmr_update_cmp(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, 0, latency_baseline * HRT_TIMER_FREQ_MHZ);
+	gptmr_update_cmp(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, 0, latency_baseline);
 }
 
 static void
@@ -809,6 +809,8 @@ hrt_latency_update(void)
 {
 	uint16_t latency = latency_actual - latency_baseline;
 	unsigned	index;
+
+	latency /= HRT_TIMER_FREQ_MHZ;    /* Unit: 1us */
 
 	/* bounded buckets */
 	for (index = 0; index < LATENCY_BUCKET_COUNT; index++) {
