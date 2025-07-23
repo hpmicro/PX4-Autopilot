@@ -167,7 +167,7 @@ hpm_boardinitialize(void)
 
  __EXPORT int board_app_initialize(uintptr_t arg)
 {
-	printf("hello world\n");
+	printf("HPMicro PX4\n");
 
 #ifdef CONFIG_HPM_USBDEV
 	hpm_usbdev_initialize(CONFIG_HPM_USBDEV_INSTANCE);
