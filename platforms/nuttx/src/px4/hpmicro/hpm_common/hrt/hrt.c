@@ -146,7 +146,7 @@
 /*
 * Period of the free-running counter, in microseconds.
 */
-#define HRT_COUNTER_PERIOD	4294967296LL
+#define HRT_COUNTER_PERIOD	4294967296LL    /* unit: 0.01us */
 
 /*
 * Scaling factor(s) for the free-running counter; convert an input
@@ -154,7 +154,7 @@
 */
 #define HRT_COUNTER_SCALE(_c)	(_c)
 
-#define rCNT gptmr_channel_get_counter(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, gptmr_counter_type_normal)
+#define rCNT HRT_TIMER_BASE->CHANNEL[HRT_TIMER_CHANNEL].CNT
 
 #if (HRT_TIMER_CHANNEL < 0) || (HRT_TIMER_CHANNEL > 3)
 #  error HRT_TIMER_CHANNEL must be a value between 0 and 3
@@ -279,8 +279,8 @@ static void hrt_tim_init(void)
 	gptmr_channel_get_default_config(HRT_TIMER_BASE, &config);
 	config.mode = gptmr_work_mode_capture_at_both_edge;
 	config.cmp[0] = 1000 * HRT_TIMER_FREQ_MHZ;    /* 1ms */
-	config.cmp[1] = 0xFFFFFFFFu;
-	config.reload = 0xFFFFFFFFu;
+	config.cmp[1] = 0xFFFFFFFFu;    /* HRT_COUNTER_PERIOD - 1 */
+	config.reload = 0xFFFFFFFFu;    /* HRT_COUNTER_PERIOD - 1 */
 	gptmr_channel_config(HRT_TIMER_BASE, HRT_TIMER_CHANNEL, &config, false);
 	gptmr_channel_reset_count(HRT_TIMER_BASE, HRT_TIMER_CHANNEL);
 	gptmr_start_counter(HRT_TIMER_BASE, HRT_TIMER_CHANNEL);
@@ -539,7 +539,7 @@ hrt_absolute_time(void)
 	flags = px4_enter_critical_section();
 
 	/* get the current counter value */
-	count = rCNT / HRT_TIMER_FREQ_MHZ;    /* Unit: 1us */
+	count = rCNT;    /* Unit: 0.01us */
 
 	/*
 	 * Determine whether the counter has wrapped since the
@@ -560,7 +560,7 @@ hrt_absolute_time(void)
 
 	px4_leave_critical_section(flags);
 
-	return abstime;
+	return (abstime / HRT_TIMER_FREQ_MHZ);    /* Unit: 1us */
 }
 
 /**
