@@ -20,7 +20,7 @@
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
  * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,spi2
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
@@ -39,8 +39,12 @@
 
 #if defined(CONFIG_MTD)
 //                                                              KiB BS    nB
-static const px4_mft_device_t qspi_flash = {             // FM25V02A on FMUM native: 32K X 8, emulated as (1024 Blocks of 32)
-	.bus_type = px4_mft_device_t::FLEXSPI,
+// static const px4_mft_device_t qspi_flash = {             // FM25V02A on FMUM native: 32K X 8, emulated as (1024 Blocks of 32)
+// 	.bus_type = px4_mft_device_t::FLEXSPI,
+// 	.devid    = SPIDEV_FLASH(0)
+// };
+static const px4_mft_device_t spi2 = {             // FM25V02A on FMUM native: 32K X 8, emulated as (1024 Blocks of 32)
+	.bus_type = px4_mft_device_t::SPI,
 	.devid    = SPIDEV_FLASH(0)
 };
 static const px4_mft_device_t i2c2 = {             // 24LC64T on Base  8K 32 X 256
@@ -54,7 +58,7 @@ static const px4_mft_device_t i2c3 = {             // 24LC64T on IMU   8K 32 X 2
 
 
 static const px4_mtd_entry_t fmum_fram = {
-	.device = &qspi_flash,
+	.device = &spi2,
 	.npart = 1,
 	.partd = {
 		{

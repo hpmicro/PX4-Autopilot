@@ -34,7 +34,7 @@
 px4_add_library(drivers_board
 	init.c
 	i2c.cpp
-	#mtd.cpp
+	mtd.cpp
 	spi.cpp
 	usb.c
 	sdhc.c

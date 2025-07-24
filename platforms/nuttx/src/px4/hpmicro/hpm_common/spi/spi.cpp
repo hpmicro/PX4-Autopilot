@@ -162,6 +162,11 @@ static inline void hpm_spixselect(const px4_spi_bus_t *bus, struct spi_dev_s *de
 	}
 }
 
+__EXPORT uint32_t hpm_spibus_get_cs_pin(int bus)
+{
+    return 0;
+}
+
 /************************************************************************************
  * Name: hpm_spi0select and hpm_spi6status
  *
@@ -170,6 +175,10 @@ static inline void hpm_spixselect(const px4_spi_bus_t *bus, struct spi_dev_s *de
  *
  ************************************************************************************/
 #ifdef CONFIG_HPM_SPI0
+__EXPORT void write_spi0_cs(uint32_t pin, uint8_t state)
+{
+	;
+}
 
 __EXPORT void hpm_spi0select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
@@ -190,6 +199,10 @@ __EXPORT uint8_t hpm_spi0status(FAR struct spi_dev_s *dev, uint32_t devid)
  *
  ************************************************************************************/
 #ifdef CONFIG_HPM_SPI1
+__EXPORT void write_spi1_cs(uint32_t pin, uint8_t state)
+{
+	;
+}
 
 __EXPORT void hpm_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
@@ -210,6 +223,11 @@ __EXPORT uint8_t hpm_spi1status(FAR struct spi_dev_s *dev, uint32_t devid)
  *
  ************************************************************************************/
 #if defined(CONFIG_HPM_SPI2)
+__EXPORT void write_spi2_cs(uint32_t pin, uint8_t state)
+{
+	;
+}
+
 __EXPORT void hpm_spi2select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
 	hpm_spixselect(_spi_bus2, dev, devid, selected);
@@ -229,6 +247,11 @@ __EXPORT uint8_t hpm_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
  *
  ************************************************************************************/
 #if defined(CONFIG_HPM_SPI3)
+__EXPORT void write_spi3_cs(uint32_t pin, uint8_t state)
+{
+	;
+}
+
 __EXPORT void hpm_spi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
 	hpm_spixselect(_spi_bus3, dev, devid, selected);
@@ -248,6 +271,10 @@ __EXPORT uint8_t hpm_spi3status(FAR struct spi_dev_s *dev, uint32_t devid)
  *
  ************************************************************************************/
 #ifdef CONFIG_HPM_SPI4
+__EXPORT void write_spi4_cs(uint32_t pin, uint8_t state)
+{
+	;
+}
 
 __EXPORT void hpm_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
@@ -268,6 +295,10 @@ __EXPORT uint8_t hpm_spi4status(FAR struct spi_dev_s *dev, uint32_t devid)
  *
  ************************************************************************************/
 #ifdef CONFIG_HPM_SPI5
+__EXPORT void write_spi5_cs(uint32_t pin, uint8_t state)
+{
+	;
+}
 
 __EXPORT void hpm_spi5select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {

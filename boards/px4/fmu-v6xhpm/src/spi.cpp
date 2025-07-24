@@ -104,7 +104,6 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 #endif
 #ifdef CONFIG_HPM_SPI1
 	initSPIBus(SPI::Bus::SPI1, {
-		initSPIDevice(SPIDEV_FLASH(0), SPI::CS{GPIO::PortA, GPIO::Pin26}),
 		initSPIDevice(DRV_IMU_DEVTYPE_ADIS16470, SPI::CS{GPIO::PortB, GPIO::Pin10}, SPI::DRDY{GPIO::PortB, GPIO::Pin12}),
 		initSPIDevice(DRV_GYR_DEVTYPE_BMI088, SPI::CS{GPIO::PortB, GPIO::Pin13}, SPI::DRDY{GPIO::PortA, GPIO::Pin31}),
 		// initSPIDevice(DRV_GYR_DEVTYPE_BMI088, SPI::CS{GPIO::PortB, GPIO::Pin13}),
@@ -114,6 +113,7 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 #endif
 #ifdef CONFIG_HPM_SPI2
 	initSPIBus(SPI::Bus::SPI2, {
+		initSPIDevice(SPIDEV_FLASH(0), SPI::CS{GPIO::PortB, GPIO::Pin24}),
 		// initSPIDevice(DRV_GYR_DEVTYPE_BMI088, SPI::CS{GPIO::PortC, GPIO::Pin8}, SPI::DRDY{GPIO::PortY, GPIO::Pin7}),
 		// initSPIDevice(DRV_ACC_DEVTYPE_BMI088, SPI::CS{GPIO::PortD, GPIO::Pin4}, SPI::DRDY{GPIO::PortY, GPIO::Pin6}),
 	}),
