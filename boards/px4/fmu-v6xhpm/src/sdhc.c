@@ -32,24 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-/* A micro Secure Digital (SD) card slot is available on the board connected to
- * the SD Host Controller (USDHC1) signals of the MCU. This slot will accept
- * micro format SD memory cards.
- *
- *   ------------ ------------- --------
- *    SD Card Slot Board Signal  IMXRT Pin
- *    ------------ ------------- --------
- *    DAT0         USDHC1_DATA0  GPIO_SD_B0_02
- *    DAT1         USDHC1_DATA1  GPIO_SD_B0_03
- *    DAT2         USDHC1_DATA2  GPIO_SD_B0_04
- *    CD/DAT3      USDHC1_DATA3  GPIO_SD_B0_05
- *    CMD          USDHC1_CMD    GPIO_SD_B0_00
- *    CLK          USDHC1_CLK    GPIO_SD_B0_01
- *    CD           USDHC1_CD     GPIO_B1_12
- *    ------------ ------------- --------
- *
- * There are no Write Protect available to the IMXRT.
- */
 
 /****************************************************************************
  * Included Files
