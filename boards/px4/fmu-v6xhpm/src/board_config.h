@@ -59,6 +59,9 @@
 
 #define BOARD_ENABLE_CONSOLE_BUFFER
 
+#define ADC_BATTERY_VOLTAGE_CHANNEL  0
+#define ADC_BATTERY_CURRENT_CHANNEL  1
+
 __BEGIN_DECLS
 
 /****************************************************************************************************
