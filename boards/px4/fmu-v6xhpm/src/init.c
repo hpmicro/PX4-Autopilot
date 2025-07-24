@@ -169,11 +169,15 @@ hpm_boardinitialize(void)
 {
 	printf("HPMicro PX4\n");
 
+	px4_platform_init();
+
 #ifdef CONFIG_HPM_USBDEV
 	hpm_usbdev_initialize(CONFIG_HPM_USBDEV_INSTANCE);
 #endif
 
-	px4_platform_init();
+	//hpm_spiinitialize();
+
+	px4_platform_configure();
 
 	/* Configure the DMA allocator */
 
@@ -187,9 +191,9 @@ hpm_boardinitialize(void)
 	// led_off(LED_RED);
 	// led_off(LED_GREEN);
 	// led_off(LED_BLUE);
-
-	px4_platform_configure();
-
+#if defined(CONFIG_HPM_SDXC0) || defined(CONFIG_HPM_SDXC1)
+	hpm_sdioinitialize();
+#endif
 	return 0;
 }
 

@@ -75,27 +75,11 @@ __BEGIN_DECLS
  * Public Functions
  ****************************************************************************************************/
 
-/****************************************************************************
- * Name: hpm_sdio_initialize
- *
- * Description:
- *   Initialize SDIO-based MMC/SD card support
- *
- ****************************************************************************/
-
-// int hpm_sdio_initialize(void);
-
-/****************************************************************************************************
- * Name: hpm_spiinitialize
- *
- * Description:
- *   Called to configure SPI chip select GPIO pins for the PX4FMU board.
- *
- ****************************************************************************************************/
+extern int hpm_sdioinitialize(void);
 
 extern void hpm_spiinitialize(void);
 
-extern void hpm_usbinitialize(void);
+extern int hpm_usbinitialize(void);
 
 extern void board_peripheral_reset(int ms);
 

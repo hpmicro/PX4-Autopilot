@@ -34,11 +34,12 @@
 px4_add_library(drivers_board
 	init.c
 	i2c.cpp
-	mtd.cpp
+	#mtd.cpp
 	spi.cpp
 	usb.c
-	xpi_fram.c
-	xpi_nor_flash.c
+	sdhc.c
+	#xpi_fram.c
+	#xpi_nor_flash.c
 	${SRCS}
 )
 
