@@ -174,7 +174,7 @@ else
 
 			param status
 
-			dmesg >> /fs/microsd/param_import_fail.txt &
+			#dmesg >> /fs/microsd/param_import_fail.txt &
 		fi
 	fi
 
