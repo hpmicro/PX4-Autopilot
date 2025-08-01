@@ -48,7 +48,7 @@
  *   Zero on success; a negated errno on failure
  *
  ****************************************************************************/
-int hpm_i2cbus_pins_initialize(int port)
+int hpm_i2cbus_pins_init(int port)
 {
 	switch(port){
 		case 0:
