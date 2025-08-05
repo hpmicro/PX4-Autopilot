@@ -96,7 +96,82 @@ __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
+
+extern uint8_t __vector_ram_start__[], __vector_ram_end__[], __vector_load_addr__[];
+extern uint8_t __bss_start__[], __bss_end__[];
+extern uint8_t __noncacheable_bss_start__[], __noncacheable_bss_end__[];
+extern uint8_t __fast_ram_bss_start__[], __fast_ram_bss_end__[];
+extern uint8_t __tdata_start__[], __tdata_end__[], __tdata_load_addr__[];
+extern uint8_t __data_start__[], __data_end__[], __data_load_addr__[];
+extern uint8_t __ramfunc_start__[], __ramfunc_end__[], __fast_load_addr__[];
+extern uint8_t __axi_ramfunc_start__[], __axi_ramfunc_end__[], __axi_ramfunc_load_addr__[];
+extern uint8_t __noncacheable_init_start__[], __noncacheable_init_end__[], __noncacheable_init_load_addr__[];
+extern uint8_t __fast_ram_init_start__[], __fast_ram_init_end__[], __fast_ram_init_load_addr__[];
 __END_DECLS
+
+__EXPORT void c_startup(void)
+{
+    uint32_t i, size;
+
+    size = __vector_ram_end__ - __vector_ram_start__;
+    for (i = 0; i < size; i++) {
+        *(__vector_ram_start__ + i) = *(__vector_load_addr__ + i);
+    }
+
+    /* ramfunc section */
+    size = __ramfunc_end__ - __ramfunc_start__;
+    for (i = 0; i < size; i++) {
+        *(__ramfunc_start__ + i) = *(__fast_load_addr__ + i);
+    }
+
+     /* axi-ramfunc section */
+    size = __axi_ramfunc_end__ - __axi_ramfunc_start__;
+    for (i = 0; i < size; i++) {
+        *(__axi_ramfunc_start__ + i) = *(__axi_ramfunc_load_addr__ + i);
+    }
+
+    /* bss section */
+    size = __bss_end__ - __bss_start__;
+    for (i = 0; i < size; i++) {
+        *(__bss_start__ + i) = 0;
+    }
+
+    /* noncacheable bss section */
+    size = __noncacheable_bss_end__ - __noncacheable_bss_start__;
+    for (i = 0; i < size; i++) {
+        *(__noncacheable_bss_start__ + i) = 0;
+    }
+
+    /* fast_ram bss section */
+    size = __fast_ram_bss_end__ - __fast_ram_bss_start__;
+    for (i = 0; i < size; i++) {
+        *(__fast_ram_bss_start__ + i) = 0;
+    }
+
+    /* data section */
+    size = __data_end__ - __data_start__;
+    for (i = 0; i < size; i++) {
+        *(__data_start__ + i) = *(__data_load_addr__ + i);
+    }
+
+    /* tdata section */
+    size = __tdata_end__ - __tdata_start__;
+    for (i = 0; i < size; i++) {
+        *(__tdata_start__ + i) = *(__tdata_load_addr__ + i);
+    }
+
+    /* noncacheable init section */
+    size = __noncacheable_init_end__ - __noncacheable_init_start__;
+    for (i = 0; i < size; i++) {
+        *(__noncacheable_init_start__ + i) = *(__noncacheable_init_load_addr__ + i);
+    }
+
+    /* fast_ram init section */
+    size = __fast_ram_init_end__ - __fast_ram_init_start__;
+    for (i = 0; i < size; i++) {
+        *(__fast_ram_init_start__ + i) = *(__fast_ram_init_load_addr__ + i);
+    }
+}
 
 /************************************************************************************
  * Name: board_peripheral_reset

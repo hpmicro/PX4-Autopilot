@@ -13,9 +13,8 @@ MEMORY
     FLASH (rx) : ORIGIN = 0x80000000, LENGTH = 4M
     ILM (wx) : ORIGIN = 0x00000000, LENGTH = 256K
     DLM (w) : ORIGIN = 0x00080000, LENGTH = 256K
-    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 512K    /* AXI SRAM0 */
-    NONCACHEABLE_RAM (wx) : ORIGIN = 0x01100000, LENGTH = 256K    /* AXI SRAM1 */
-    SHARE_RAM (w) : ORIGIN = 0x0117C000, LENGTH = 16K
+    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 1472K
+    NONCACHEABLE_RAM (wx) : ORIGIN = 0x011F0000, LENGTH = 64K
     AHB_SRAM (w) : ORIGIN = 0xF0300000, LENGTH = 32k
     APB_SRAM (w): ORIGIN = 0xF40F0000, LENGTH = 8k
 }
@@ -58,11 +57,31 @@ SECTIONS
         __vector_ram_end__ = .;
     } > ILM
 
-    .text (__vector_load_addr__ + SIZEOF(.vectors)) : {
+    __fast_load_addr__ = __vector_load_addr__ + SIZEOF(.vectors);
+    .fast : AT(__fast_load_addr__) {
         . = ALIGN(8);
         PROVIDE (__stext = .);
         PROVIDE (_stext = .);
         PROVIDE (stext = .);
+        PROVIDE(__ramfunc_start__ = .);
+        *(.fast)
+        *(.fast.*)
+        INCLUDE "ilm_code_includes.ld"
+        . = ALIGN(8);
+        PROVIDE(__ramfunc_end__ = .);
+    } > ILM
+
+    __axi_ramfunc_load_addr__ = __fast_load_addr__ + SIZEOF(.fast);
+    .axi_ram_code : AT(__axi_ramfunc_load_addr__) {
+        . = ALIGN(8);
+        PROVIDE(__axi_ramfunc_start__ = .);
+        INCLUDE "axi_code_includes.ld"
+        . = ALIGN(8);
+        PROVIDE(__axi_ramfunc_end__ = .);
+    } > AXI_SRAM
+
+    .text (__axi_ramfunc_load_addr__ + SIZEOF(.axi_ram_code)) : {
+        . = ALIGN(8);
         *(.text)
         *(.text*)
         *(.rodata)
@@ -176,19 +195,7 @@ SECTIONS
         PROVIDE (edata = .);
     } > AXI_SRAM
 
-    __fast_load_addr__ = __data_load_addr__ + SIZEOF(.data);
-    .fast : AT(__fast_load_addr__) {
-        . = ALIGN(8);
-        PROVIDE(__ramfunc_start__ = .);
-        *(.fast)
-        *(.fast.*)
-        /* INCLUDE "ilm_static_functions.ld"
-        INCLUDE "ilm_functions_includes.ld" */
-        . = ALIGN(8);
-        PROVIDE(__ramfunc_end__ = .);
-    } > ILM
-
-    __tdata_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.fast);
+    __tdata_load_addr__ = __data_load_addr__ + SIZEOF(.data);
     .tdata : AT(__tdata_load_addr__) {
         . = ALIGN(8);
         PROVIDE(__tdata_start__ = .);
@@ -211,7 +218,7 @@ SECTIONS
         PROVIDE(__tbss_end__ = .);
     } > AXI_SRAM
 
-    __noncacheable_init_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata);
+    __noncacheable_init_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.tdata);
     .noncacheable.init : AT(__noncacheable_init_load_addr__) {
         . = ALIGN(8);
         __noncacheable_init_start__ = .;
@@ -221,7 +228,7 @@ SECTIONS
         __noncacheable_init_end__ = .;
     } > NONCACHEABLE_RAM
 
-    __fast_ram_init_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata) + SIZEOF(.noncacheable.init);
+    __fast_ram_init_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.tdata) + SIZEOF(.noncacheable.init);
     .fast_ram.init : AT(__fast_ram_init_load_addr__) {
         . = ALIGN(8);
         __fast_ram_init_start__ = .;
@@ -246,13 +253,6 @@ SECTIONS
         __bss_end__ = .;
     } > AXI_SRAM
 
-    .framebuffer (NOLOAD) : {
-        . = ALIGN(8);
-        KEEP(*(.framebuffer))
-        KEEP(*(.framebuffer.*))
-        . = ALIGN(8);
-    } > AXI_SRAM
-
     .noncacheable (NOLOAD) : {
         . = ALIGN(8);
         KEEP(*(.noncacheable))  /* Legacy sections, kept for backwards compatibility */
@@ -265,11 +265,6 @@ SECTIONS
         . = ALIGN(8);
         __noncacheable_bss_end__ = .;
     } > NONCACHEABLE_RAM
-
-    .sh_mem (NOLOAD) : {
-        KEEP(*(.sh_mem))
-        KEEP(*(.sh_mem.*))
-    } > SHARE_RAM
 
     .ahb_sram (NOLOAD) : {
         KEEP(*(.ahb_sram))
@@ -313,10 +308,8 @@ SECTIONS
 
     __noncacheable_start__ = ORIGIN(NONCACHEABLE_RAM);
     __noncacheable_end__ = ORIGIN(NONCACHEABLE_RAM) + LENGTH(NONCACHEABLE_RAM);
-    __share_mem_start__ = ORIGIN(SHARE_RAM);
-    __share_mem_end__ = ORIGIN(SHARE_RAM) + LENGTH(SHARE_RAM);
 
-    __fw_size__ = SIZEOF(.start) + SIZEOF(.vectors) + SIZEOF(.rel) + SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata)
+    __fw_size__ = SIZEOF(.start) + SIZEOF(.vectors) + SIZEOF(.rel) + SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.axi_ram_code) + SIZEOF(.tdata)
                 + SIZEOF(.noncacheable.init) + SIZEOF(.fast_ram.init) + SIZEOF(.eh_frame) + SIZEOF(.eh_frame_hdr) + SIZEOF(.init_section);
     __last_addr__ = __fast_ram_init_load_addr__ + SIZEOF(.fast_ram.init);
     ASSERT(((__fw_size__ <= LENGTH(FLASH)) && (__last_addr__ <= (ORIGIN(FLASH) + LENGTH(FLASH)))), "******  FAILED! FLASH does not have enough space!  ******")
