@@ -53,6 +53,10 @@
 #define GPIO_SPI2_MISO (GPIO_ALT | GPIO_AF5 | GPIO_DS_12mA | GPIO_PORTB | GPIO_PIN25)
 #define GPIO_SPI2_MOSI (GPIO_ALT | GPIO_AF5 | GPIO_DS_12mA | GPIO_PORTB | GPIO_PIN22)
 
+#define GPIO_SPI3_SCK  (GPIO_ALT | GPIO_AF5 | GPIO_DS_12mA | GPIO_PORTC | GPIO_PIN2 | GPIO_LOOPBACK)
+#define GPIO_SPI3_MISO (GPIO_ALT | GPIO_AF5 | GPIO_DS_12mA | GPIO_PORTC | GPIO_PIN3)
+#define GPIO_SPI3_MOSI (GPIO_ALT | GPIO_AF5 | GPIO_DS_12mA | GPIO_PORTB | GPIO_PIN30)
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/
