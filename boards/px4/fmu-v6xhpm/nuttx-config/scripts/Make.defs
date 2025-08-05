@@ -49,6 +49,7 @@ CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)dp83867
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)rtl8201
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)rtl8211
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)i2c
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)spi
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)uart_lin
 CFLAGS += -I$(CHIP_DIR)$(DELIM)

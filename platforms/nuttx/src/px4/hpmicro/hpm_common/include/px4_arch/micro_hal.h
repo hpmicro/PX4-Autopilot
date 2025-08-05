@@ -42,9 +42,9 @@ __BEGIN_DECLS
 #include <nuttx/irq.h>
 #include <nuttx/i2c/i2c_master.h>
 
-#include <hpm_gpio.h>
-#include <hpm_i2c.h>
-#include <hpm_spi_master.h>
+#include "hpm_gpio.h"
+#include "hpm_i2c_master.h"
+#include "hpm_spi_master.h"
 
 /*  defines the 128 bit UUID as
  *
