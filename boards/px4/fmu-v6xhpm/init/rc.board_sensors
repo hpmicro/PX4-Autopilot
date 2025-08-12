@@ -3,3 +3,5 @@
 # PX4 FMUv6X specific board sensors init
 #------------------------------------------------------------------------------
 icm20602 -R 6 -s start
+bmm350 -I -b 3 start
+bmp388 -I -b 3 -a 0x77 start
