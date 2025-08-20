@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2016, 2019, 2023 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2019 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,28 +31,12 @@
 #
 ############################################################################
 
-px4_add_library(drivers_board
-	init.c
-	i2c.cpp
-	mtd.cpp
-	spi.cpp
-	timer_config.cpp
-	usb.c
-	sdhc.c
-	#xpi_fram.c
-	#xpi_nor_flash.c
-	${SRCS}
+px4_add_library(arch_io_pins
+	input_capture.c
+	io_timer.c
+	pwm_servo.c
+	pwm_trigger.c
 )
+target_compile_options(arch_io_pins PRIVATE ${MAX_CUSTOM_OPT_LEVEL})
 
-target_link_libraries(drivers_board
-	PRIVATE
-		arch_io_pins
-		#arch_board_hw_info
-		arch_board_romapi
-		arch_spi
-		drivers__led # drv_led_start
-		nuttx_arch # sdio
-		nuttx_drivers # sdio
-		px4_layer
-)
-
+target_link_libraries(arch_io_pins PRIVATE drivers_board) # timer_io_channels

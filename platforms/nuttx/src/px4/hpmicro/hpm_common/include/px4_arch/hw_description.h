@@ -36,10 +36,55 @@
 #include <stdint.h>
 
 #include <hpm_gpio.h>
-// #include <hpm_spi.h>
+#include <hpm_soc.h>
 
 
 #include <px4_platform_common/constexpr_util.h>
+
+/*
+ * PWM
+ */
+
+namespace Timer
+{
+enum Timer {
+	PWM0 = 0,
+	PWM1,
+	PWM2,
+	PWM3,
+};
+
+enum Channel {
+	Channel0 = 0,
+	Channel1,
+	Channel2,
+	Channel3,
+	Channel4,
+	Channel5,
+	Channel6,
+	Channel7,
+};
+
+struct TimerChannel {
+	Timer timer;
+	Channel channel;
+};
+}
+
+static inline constexpr uint32_t timerBaseRegister(Timer::Timer timer)
+{
+	switch (timer) {
+	case Timer::PWM0: return HPM_PWM0_BASE;
+
+	case Timer::PWM1: return HPM_PWM1_BASE;
+
+	case Timer::PWM2: return HPM_PWM2_BASE;
+
+	case Timer::PWM3: return HPM_PWM3_BASE;
+	}
+
+	return 0;
+}
 
 /*
  * GPIO
