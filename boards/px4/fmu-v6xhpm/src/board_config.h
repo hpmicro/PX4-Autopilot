@@ -64,6 +64,11 @@
 #define ADC_BATTERY_VOLTAGE_CHANNEL  0
 #define ADC_BATTERY_CURRENT_CHANNEL  1
 
+/* RC Serial port */
+
+#define RC_SERIAL_PORT                     "/dev/ttyS6"
+#define RC_SERIAL_SINGLEWIRE
+
 __BEGIN_DECLS
 
 /****************************************************************************************************
