@@ -6,7 +6,7 @@
 ENTRY(__start)
 
 STACK_SIZE = 16K;
-HEAP_SIZE = 200K;
+HEAP_SIZE = 230K;
 
 MEMORY
 {
