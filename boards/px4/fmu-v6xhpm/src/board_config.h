@@ -69,6 +69,8 @@
 #define RC_SERIAL_PORT                     "/dev/ttyS6"
 #define RC_SERIAL_SINGLEWIRE
 
+#define RC_INVERT_INPUT(invert) rc_input_invert(invert)
+
 __BEGIN_DECLS
 
 /****************************************************************************************************
@@ -94,6 +96,8 @@ extern int hpm_usbinitialize(void);
 extern void board_peripheral_reset(int ms);
 
 extern int board_read_VBUS_state(void);
+
+extern void rc_input_invert(bool invert);
 
 #include <px4_platform_common/board_common.h>
 
