@@ -246,6 +246,9 @@ hpm_boardinitialize(void)
 {
 	printf("\n\nHPMicro PX4\n");
 
+	px4_arch_configgpio(GPIO_LED_SAFETY);
+	px4_arch_configgpio(GPIO_BTN_SAFETY);
+
 	px4_platform_init();
 
 #ifdef CONFIG_HPM_USBDEV

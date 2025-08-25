@@ -71,6 +71,16 @@
 
 #define RC_INVERT_INPUT(invert) rc_input_invert(invert)
 
+#define GPIO_nSAFETY_SWITCH_LED_OUT_INIT   /* PF07 */ (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTF|GPIO_PIN7)
+#define GPIO_nSAFETY_SWITCH_LED_OUT        /* PF07 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_SET|GPIO_PORTF|GPIO_PIN7)
+
+/* Enable the FMU to control it if there is no px4io fixme:This should be BOARD_SAFETY_LED(__ontrue) */
+#define GPIO_LED_SAFETY GPIO_nSAFETY_SWITCH_LED_OUT
+
+#define GPIO_SAFETY_SWITCH_IN              /* PF05 */ (GPIO_INPUT|GPIO_SMT|GPIO_PORTF|GPIO_PIN5)
+/* Enable the FMU to use the switch it if there is no px4io fixme:This should be BOARD_SAFTY_BUTTON() */
+#define GPIO_BTN_SAFETY GPIO_SAFETY_SWITCH_IN /* Enable the FMU to control it if there is no px4io */
+
 __BEGIN_DECLS
 
 /****************************************************************************************************

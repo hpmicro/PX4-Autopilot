@@ -24,4 +24,4 @@
 # 	param set-default UXRCE_DDS_PTCFG 2
 # fi
 
-# safety_button start
+safety_button start
