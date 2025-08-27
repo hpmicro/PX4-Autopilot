@@ -47,10 +47,10 @@ static const px4_mft_device_t spi2 = {             // FM25V02A on FMUM native: 3
 	.bus_type = px4_mft_device_t::SPI,
 	.devid    = SPIDEV_FLASH(0)
 };
-// static const px4_mft_device_t i2c2 = {             // 24LC64T on Base  8K 32 X 256
-// 	.bus_type = px4_mft_device_t::I2C,
-// 	.devid    = PX4_MK_I2C_DEVID(2, 0x51)
-// };
+static const px4_mft_device_t i2c0 = {             // 24LC64T on Base  8K 32 X 256
+	.bus_type = px4_mft_device_t::I2C,
+	.devid    = PX4_MK_I2C_DEVID(0, 0x50)
+};
 static const px4_mft_device_t i2c3 = {             // 24LC64T on IMU   8K 32 X 256
 	.bus_type =  px4_mft_device_t::I2C,
 	.devid    =  PX4_MK_I2C_DEVID(3, 0x50)
@@ -70,7 +70,7 @@ static const px4_mtd_entry_t fmum_fram = {
 };
 
 static const px4_mtd_entry_t base_eeprom = {
-	.device = &i2c3,
+	.device = &i2c0,
 	.npart = 2,
 	.partd = {
 		{
@@ -110,10 +110,10 @@ static const px4_mtd_entry_t imu_eeprom = {
 };
 
 static const px4_mtd_manifest_t board_mtd_config = {
-	.nconfigs   = 2,
+	.nconfigs   = 3,
 	.entries = {
 		&fmum_fram,
-		// &base_eeprom,
+		&base_eeprom,
 		&imu_eeprom
 	}
 };

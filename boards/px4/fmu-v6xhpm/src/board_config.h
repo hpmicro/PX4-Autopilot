@@ -61,6 +61,16 @@
 
 #define PX4_I2C_BUS_MTD	1
 
+
+/* I2C busses */
+
+/* Devices on the onboard buses.
+ *
+ * Note that these are unshifted addresses.
+ */
+#define BOARD_MTD_NUM_EEPROM        2 /* MTD: base_eeprom, imu_eeprom*/
+
+
 #define ADC_BATTERY_VOLTAGE_CHANNEL  0
 #define ADC_BATTERY_CURRENT_CHANNEL  1
 
