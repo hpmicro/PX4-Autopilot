@@ -91,6 +91,15 @@
 /* Enable the FMU to use the switch it if there is no px4io fixme:This should be BOARD_SAFTY_BUTTON() */
 #define GPIO_BTN_SAFETY GPIO_SAFETY_SWITCH_IN /* Enable the FMU to control it if there is no px4io */
 
+/* PWM */
+
+#define DIRECT_PWM_OUTPUT_CHANNELS  4
+#define BOARD_NUM_IO_TIMERS         2
+
+// Input Capture not supported
+
+#define BOARD_HAS_NO_CAPTURE
+
 __BEGIN_DECLS
 
 /****************************************************************************************************
