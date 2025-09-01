@@ -254,7 +254,7 @@ int io_timer_validate_channel_index(unsigned channel)
 {
 	int rv = -EINVAL;
 
-	if (channel < MAX_TIMER_IO_CHANNELS && timer_io_channels[channel].timer_channel != 0) {
+	if (channel < MAX_TIMER_IO_CHANNELS) {
 
 		/* test timer for validity */
 
@@ -397,9 +397,30 @@ static int timer_set_rate(unsigned timer, unsigned rate)
 	return 0;
 }
 
-static inline void io_timer_set_oneshot_mode(unsigned timer)
+static inline void io_timer_set_oneshot_mode(unsigned timer, int changed_channels)
 {
 	pwm_set_reload((PWM_Type *)io_timers[timer].base, 0, 0xFFFFFF);
+
+	for (unsigned channel = 0; changed_channels != 0 &&  channel < MAX_TIMER_IO_CHANNELS; channel++) {
+		if (changed_channels & (1 << channel)) {
+
+			/* configure the channel */
+
+			pwm_cmp_config_t cmp_config = { 0 };
+
+			cmp_config.mode = pwm_cmp_mode_output_compare;
+			cmp_config.cmp = 0xFFFFFF;
+			cmp_config.update_trigger = pwm_shadow_register_update_on_shlk;
+
+			pwm_config_cmp((PWM_Type *)io_timers[timer].base, timer_io_channels[channel].timer_channel * 2,  &cmp_config);
+			pwm_config_cmp((PWM_Type *)io_timers[timer].base, timer_io_channels[channel].timer_channel * 2 + 1,  &cmp_config);
+
+			changed_channels &= ~(1 << channel);
+
+		}
+	}
+
+	pwm_issue_shadow_register_lock_event((PWM_Type *)io_timers[timer].base);
 }
 
 static inline void io_timer_set_PWM_mode(unsigned timer)
@@ -437,6 +458,8 @@ void io_timer_trigger(unsigned channels_mask)	/* Trigger all timer's channels in
 		irqstate_t flags = px4_enter_critical_section();
 
 		for (actions = 0; actions < MAX_IO_TIMERS && action_cache[actions].base != 0; actions++) {
+			pwm_issue_shadow_register_lock_event((PWM_Type *)action_cache[actions].base);
+
 			trgm_output_update_source((TRGM_Type *)action_cache[actions].trgm_base, TRGM_TRGOCFG_PWM_SYNCI, 1);
 			trgm_output_update_source((TRGM_Type *)action_cache[actions].trgm_base, TRGM_TRGOCFG_PWM_SYNCI, 0);
 		}
@@ -467,8 +490,6 @@ int io_timer_init_timer(unsigned timer, io_timer_channel_mode_t mode)
 
 		/* enable reload when synci assert */
 		pwm_enable_reload_at_synci((PWM_Type *)io_timers[timer].base);
-
-		pwm_set_load_counter_shadow_register_trigger((PWM_Type *)io_timers[timer].base, pwm_shadow_register_update_on_modify, 0);
 
 		/*
 		 * Note we do the Standard PWM Out init here
@@ -531,7 +552,7 @@ int io_timer_set_pwm_rate(unsigned timer, unsigned rate)
 
 		/* Did the allocation change */
 		if (changed_channels) {
-			io_timer_set_oneshot_mode(timer);
+			io_timer_set_oneshot_mode(timer, changed_channels);
 		}
 
 	} else {
@@ -615,22 +636,14 @@ int io_timer_channel_init(unsigned channel, io_timer_channel_mode_t mode,
 		pwm_get_default_pwm_config((PWM_Type *)io_timers[timer].base, &pwm_config);
 		pwm_config.enable_output = true;
 
+		/* First init for IOTimerChanMode_PWMOut, in io_timer_set_oneshot_mode() changed to oneshot mode */
 		cmp_config[0].mode = pwm_cmp_mode_output_compare;
-		if (IOTimerChanMode_PWMOut == mode) {
-			cmp_config[0].cmp = 0;
-			cmp_config[0].update_trigger = pwm_shadow_register_update_on_hw_event;
-		} else {
-			cmp_config[0].cmp = 0xFFFFFF;
-			cmp_config[0].update_trigger = pwm_shadow_register_update_on_sh_synci;
-		}
+		cmp_config[0].cmp = 0;
+		cmp_config[0].update_trigger = pwm_shadow_register_update_on_hw_event;
 
 		cmp_config[1].mode = pwm_cmp_mode_output_compare;
 		cmp_config[1].cmp = 0xFFFFFF;
-		if (IOTimerChanMode_PWMOut == mode) {
-			cmp_config[1].update_trigger = pwm_shadow_register_update_on_hw_event;
-		} else {
-			cmp_config[1].update_trigger = pwm_shadow_register_update_on_sh_synci;
-		}
+		cmp_config[1].update_trigger = pwm_shadow_register_update_on_hw_event;
 
 		/*
 		 * config pwm
@@ -770,14 +783,13 @@ int io_timer_set_ccr(unsigned channel, uint16_t value)     // value in 1us, ones
 
 		} else {
 			/* configure the channel */
-			ccr = (uint32_t)value * (clock_get_frequency(io_timers[timer].clock_name) / 1000000);
-			pwm_shadow_register_unlock((PWM_Type *)io_timers[timer].base);
 			if (mode == IOTimerChanMode_OneShot) {
 				pwm_cmp_update_cmp_value((PWM_Type *)io_timers[timer].base, (timer_io_channels[channel].timer_channel * 2), 0, 0);
-				ccr = ccr >> 3; // oneshot125 should div8
+				ccr = (uint32_t)value * (clock_get_frequency(io_timers[timer].clock_name) / BOARD_ONESHOT_FREQ);
+			} else {
+				ccr = (uint32_t)value * (clock_get_frequency(io_timers[timer].clock_name) / BOARD_PWM_FREQ);
 			}
 			pwm_cmp_update_cmp_value((PWM_Type *)io_timers[timer].base, (timer_io_channels[channel].timer_channel * 2) + 1, ccr , 0);
-
 		}
 	}
 
@@ -796,7 +808,12 @@ uint16_t io_channel_get_ccr(unsigned channel)     // return value in 1us
 		    (mode == IOTimerChanMode_OneShot) ||
 		    (mode == IOTimerChanMode_Trigger)) {
 			value = pwm_cmp_get_cmp_value((PWM_Type *)io_timers[timer].base, (timer_io_channels[channel].timer_channel * 2) + 1);
-			value = value / (clock_get_frequency(io_timers[timer].clock_name) / 1000000);
+			if (mode == IOTimerChanMode_OneShot) {
+				value = value / (clock_get_frequency(io_timers[timer].clock_name) / BOARD_ONESHOT_FREQ);
+
+			} else {
+				value = value / (clock_get_frequency(io_timers[timer].clock_name) / BOARD_PWM_FREQ);
+			}
 		}
 	}
 

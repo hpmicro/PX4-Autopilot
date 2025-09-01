@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012, 2017 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2018 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,10 +34,7 @@
 /*
  * @file pwm_servo.c
  *
- * Servo driver supporting PWM servos connected to STM32 timer blocks.
- *
- * Works with any of the 'generic' or 'advanced' STM32 timers that
- * have output pins, does not require an interrupt.
+ * Servo driver supporting PWM servos connected to PWM timer blocks.
  */
 
 #include <px4_platform_common/px4_config.h>
