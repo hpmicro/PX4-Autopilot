@@ -7,14 +7,15 @@ ENTRY(__start)
 
 STACK_SIZE = 16K;
 HEAP_SIZE = 230K;
+HEAP2_SIZE = 128K;
 
 MEMORY
 {
     FLASH (rx) : ORIGIN = 0x80000000, LENGTH = 4M
     ILM (wx) : ORIGIN = 0x00000000, LENGTH = 256K
     DLM (w) : ORIGIN = 0x00080000, LENGTH = 256K
-    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 1472K
-    NONCACHEABLE_RAM (wx) : ORIGIN = 0x011F0000, LENGTH = 64K
+    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 1504K
+    NONCACHEABLE_RAM (wx) : ORIGIN = 0x011F8000, LENGTH = 32K
     AHB_SRAM (w) : ORIGIN = 0xF0300000, LENGTH = 32k
     APB_SRAM (w): ORIGIN = 0xF40F0000, LENGTH = 8k
 }
@@ -305,6 +306,14 @@ SECTIONS
         PROVIDE (_stack = .);
         PROVIDE (_stack_safe = .);
     } > DLM
+
+    .heap2 (NOLOAD) : {
+        . = ALIGN(8);
+        __heap2_start__ = .;
+        . += HEAP2_SIZE;
+        . = ALIGN(8);
+        __heap2_end__ = .;
+    } > AXI_SRAM
 
     __noncacheable_start__ = ORIGIN(NONCACHEABLE_RAM);
     __noncacheable_end__ = ORIGIN(NONCACHEABLE_RAM) + LENGTH(NONCACHEABLE_RAM);
