@@ -62,7 +62,7 @@ enum Channel {
 	Channel4,
 	Channel5,
 	Channel6,
-	Channel7,
+	ChannelInvalid,
 };
 
 struct TimerChannel {
