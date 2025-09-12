@@ -35,7 +35,6 @@
 /**
  * @file board_identity.c
  * Implementation of STM32 based Board identity API
- * xiaoyonghui  待完善
  */
 
 #include <px4_platform_common/px4_config.h>
