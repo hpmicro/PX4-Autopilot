@@ -101,6 +101,11 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: px4_fmu-v6x_bootloader
+    px4_fmu-v6xhpm_default:
+      short: px4_fmu-v6xhpm
+      buildType: MinSizeRel
+      settings:
+        CONFIG: px4_fmu-v6xhpm_default
     px4_fmu-v6xrt_default:
       short: px4_fmu-v6xrt
       buildType: MinSizeRel
