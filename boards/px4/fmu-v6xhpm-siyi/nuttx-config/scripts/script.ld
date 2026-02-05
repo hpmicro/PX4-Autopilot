@@ -1,0 +1,325 @@
+/*
+ * Copyright (c) 2021-2025 HPMicro
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+ENTRY(__start)
+
+STACK_SIZE = 768;  /* CONFIG_IDLETHREAD_STACKSIZE */
+HEAP_SIZE = 230K;
+HEAP2_SIZE = 128K;
+
+MEMORY
+{
+    FLASH (rx) : ORIGIN = 0x80000000, LENGTH = 4M
+    ILM (wx) : ORIGIN = 0x00000000, LENGTH = 256K
+    DLM (w) : ORIGIN = 0x00080000, LENGTH = 256K
+    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 1504K
+    NONCACHEABLE_RAM (wx) : ORIGIN = 0x011F8000, LENGTH = 32K
+    AHB_SRAM (w) : ORIGIN = 0xF0300000, LENGTH = 32k
+    APB_SRAM (w): ORIGIN = 0xF40F0000, LENGTH = 8k
+}
+
+__nor_cfg_option_load_addr__ = ORIGIN(FLASH) + 0x400;
+__boot_header_load_addr__ = ORIGIN(FLASH) + 0x1000;
+__app_load_addr__ = ORIGIN(FLASH) + 0x3000;
+__boot_header_length__ = __boot_header_end__ - __boot_header_start__;
+__app_offset__ = __app_load_addr__ - __boot_header_load_addr__;
+
+
+SECTIONS
+{
+    .nor_cfg_option __nor_cfg_option_load_addr__ : {
+        KEEP(*(.nor_cfg_option))
+    } > FLASH
+
+    .boot_header __boot_header_load_addr__ : {
+        __boot_header_start__ = .;
+        KEEP(*(.boot_header))
+        KEEP(*(.fw_info_table))
+        KEEP(*(.dc_info))
+        __boot_header_end__ = .;
+    } > FLASH
+
+    .start __app_load_addr__ : {
+        . = ALIGN(8);
+        KEEP(*(.start))
+        . = ALIGN(8);
+    } > FLASH
+
+    __vector_load_addr__ = ADDR(.start) + SIZEOF(.start);
+    .vectors ORIGIN(ILM) : AT(__vector_load_addr__) {
+        . = ALIGN(8);
+        __vector_ram_start__ = .;
+        KEEP(*(.vector_table))
+        KEEP(*(.isr_vector))
+        KEEP(*(.isr_vector.*))
+        . = ALIGN(8);
+        __vector_ram_end__ = .;
+    } > ILM
+
+    __fast_load_addr__ = __vector_load_addr__ + SIZEOF(.vectors);
+    .fast : AT(__fast_load_addr__) {
+        . = ALIGN(8);
+        PROVIDE (__stext = .);
+        PROVIDE (_stext = .);
+        PROVIDE (stext = .);
+        PROVIDE(__ramfunc_start__ = .);
+        *(.fast)
+        *(.fast.*)
+        INCLUDE "ilm_code_includes.ld"
+        . = ALIGN(8);
+        PROVIDE(__ramfunc_end__ = .);
+    } > ILM
+
+    __axi_ramfunc_load_addr__ = __fast_load_addr__ + SIZEOF(.fast);
+    .axi_ram_code : AT(__axi_ramfunc_load_addr__) {
+        . = ALIGN(8);
+        PROVIDE(__axi_ramfunc_start__ = .);
+        INCLUDE "axi_code_includes.ld"
+        . = ALIGN(8);
+        PROVIDE(__axi_ramfunc_end__ = .);
+    } > AXI_SRAM
+
+    .text (__axi_ramfunc_load_addr__ + SIZEOF(.axi_ram_code)) : {
+        . = ALIGN(8);
+        *(.text)
+        *(.text*)
+        *(.rodata)
+        *(.rodata*)
+        *(.srodata)
+        *(.srodata*)
+
+        *(.hash)
+        *(.dyn*)
+        *(.gnu*)
+        *(.pl*)
+
+        KEEP (*(.init))
+        KEEP (*(.fini))
+
+        /* section information for usbh class */
+        . = ALIGN(8);
+        __usbh_class_info_start__ = .;
+        KEEP(*(.usbh_class_info))
+        __usbh_class_info_end__ = .;
+
+        /* RT-Thread related sections - Start */
+        /* section information for finsh shell */
+        . = ALIGN(4);
+        __fsymtab_start = .;
+        KEEP(*(FSymTab))
+        __fsymtab_end = .;
+        . = ALIGN(4);
+        __vsymtab_start = .;
+        KEEP(*(VSymTab))
+        __vsymtab_end = .;
+        . = ALIGN(4);
+
+        . = ALIGN(4);
+        __rt_init_start = .;
+        KEEP(*(SORT(.rti_fn*)))
+        __rt_init_end = .;
+        . = ALIGN(4);
+
+        /* section information for modules */
+        . = ALIGN(4);
+        __rtmsymtab_start = .;
+        KEEP(*(RTMSymTab))
+        __rtmsymtab_end = .;
+        /* RT-Thread related sections - end */
+
+        . = ALIGN(8);
+        PROVIDE (__etext = .);
+        PROVIDE (_etext = .);
+        PROVIDE (etext = .);
+    } > FLASH
+
+    .init_section :
+    {
+        _sinit = ABSOLUTE(.);
+        KEEP(*(.init_array .init_array.*))
+        _einit = ABSOLUTE(.);
+    } > FLASH
+
+    .eh_frame :
+    {
+        __eh_frame_start = .;
+        KEEP(*(.eh_frame))
+        __eh_frame_end = .;
+    }  > FLASH
+
+    .eh_frame_hdr :
+    {
+        KEEP(*(.eh_frame_hdr))
+    }  > FLASH
+    __eh_frame_hdr_start = SIZEOF(.eh_frame_hdr) > 0 ? ADDR(.eh_frame_hdr) : 0;
+    __eh_frame_hdr_end = SIZEOF(.eh_frame_hdr) > 0 ? . : 0;
+
+    .rel : {
+        KEEP(*(.rel*))
+    } > FLASH
+
+    . = ALIGN(8);
+    __data_load_addr__ = .;
+    .data : AT(__data_load_addr__) {
+        . = ALIGN(8);
+        __data_start__ = .;
+        __global_pointer$ = . + 0x800;
+        *(.data)
+        *(.data*)
+        *(.sdata)
+        *(.sdata*)
+
+        KEEP(*(.jcr))
+        KEEP(*(.dynamic))
+        KEEP(*(.got*))
+        KEEP(*(.got))
+        KEEP(*(.gcc_except_table))
+        KEEP(*(.gcc_except_table.*))
+
+        . = ALIGN(8);
+        KEEP(*crtbegin*.o(.ctors))
+        KEEP(*(EXCLUDE_FILE (*crtend*.o) .ctors))
+        KEEP(*(SORT(.ctors.*)))
+        KEEP(*(.ctors))
+
+        . = ALIGN(8);
+        KEEP(*crtbegin*.o(.dtors))
+        KEEP(*(EXCLUDE_FILE (*crtend*.o) .dtors))
+        KEEP(*(SORT(.dtors.*)))
+        KEEP(*(.dtors))
+        . = ALIGN(8);
+        __data_end__ = .;
+        PROVIDE (__edata = .);
+        PROVIDE (_edata = .);
+        PROVIDE (edata = .);
+    } > AXI_SRAM
+
+    __tdata_load_addr__ = __data_load_addr__ + SIZEOF(.data);
+    .tdata : AT(__tdata_load_addr__) {
+        . = ALIGN(8);
+        PROVIDE(__tdata_start__ = .);
+        *(.tdata)
+        *(.tdata.*)
+        *(.gnu.linkonce.td.*)
+        . = ALIGN(8);
+        PROVIDE(__tdata_end__ = .);
+    } > AXI_SRAM
+
+    .tbss (NOLOAD) : {
+        . = ALIGN(8);
+        PROVIDE(__tbss_start__ = .);
+        __thread_pointer$ = .;
+        *(.tbss)
+        *(.tbss.*)
+        *(.gnu.linkonce.tb.*)
+        *(.tcommon)
+        . = ALIGN(8);
+        PROVIDE(__tbss_end__ = .);
+    } > AXI_SRAM
+
+    __noncacheable_init_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.tdata);
+    .noncacheable.init : AT(__noncacheable_init_load_addr__) {
+        . = ALIGN(8);
+        __noncacheable_init_start__ = .;
+        KEEP(*(.noncacheable.init))
+        KEEP(*(.noncacheable.init.*))
+        . = ALIGN(8);
+        __noncacheable_init_end__ = .;
+    } > NONCACHEABLE_RAM
+
+    __fast_ram_init_load_addr__ = __data_load_addr__ + SIZEOF(.data) + SIZEOF(.tdata) + SIZEOF(.noncacheable.init);
+    .fast_ram.init : AT(__fast_ram_init_load_addr__) {
+        . = ALIGN(8);
+        __fast_ram_init_start__ = .;
+        KEEP(*(.fast_ram.init))
+        KEEP(*(.fast_ram.init.*))
+        . = ALIGN(8);
+        __fast_ram_init_end__ = .;
+    } > DLM
+
+    .bss (NOLOAD) : {
+        . = ALIGN(8);
+        __bss_start__ = .;
+        *(.bss)
+        *(.bss*)
+        *(.sbss*)
+        *(.scommon)
+        *(.scommon*)
+        *(.dynsbss*)
+        *(COMMON)
+        . = ALIGN(8);
+        _end = .;
+        __bss_end__ = .;
+    } > AXI_SRAM
+
+    .noncacheable (NOLOAD) : {
+        . = ALIGN(8);
+        KEEP(*(.noncacheable))  /* Legacy sections, kept for backwards compatibility */
+        KEEP(*(.noncacheable.non_init))
+        KEEP(*(.noncacheable.non_init.*))
+        . = ALIGN(8);
+        __noncacheable_bss_start__ = .;
+        KEEP(*(.noncacheable.bss))
+        KEEP(*(.noncacheable.bss.*))
+        . = ALIGN(8);
+        __noncacheable_bss_end__ = .;
+    } > NONCACHEABLE_RAM
+
+    .ahb_sram (NOLOAD) : {
+        KEEP(*(.ahb_sram))
+        KEEP(*(.ahb_sram.*))
+    } > AHB_SRAM
+
+    .apb_sram (NOLOAD) : {
+        KEEP(*(.backup_sram))
+        KEEP(*(.backup_sram.*))
+    } > APB_SRAM
+
+    .fast_ram (NOLOAD) : {
+        . = ALIGN(8);
+        KEEP(*(.fast_ram))  /* Legacy sections, kept for backwards compatibility */
+        KEEP(*(.fast_ram.non_init))
+        KEEP(*(.fast_ram.non_init.*))
+        . = ALIGN(8);
+        __fast_ram_bss_start__ = .;
+        KEEP(*(.fast_ram.bss))
+        KEEP(*(.fast_ram.bss.*))
+        . = ALIGN(8);
+        __fast_ram_bss_end__ = .;
+    } > DLM
+
+    .heap (NOLOAD) : {
+        . = ALIGN(8);
+        __heap_start__ = .;
+        . += HEAP_SIZE;
+        . = ALIGN(8);
+        __heap_end__ = .;
+    } > DLM
+
+    .stack (NOLOAD) : {
+        . = ALIGN(16);
+        __stack_base__ = .;
+        . += STACK_SIZE;
+        . = ALIGN(16);
+        PROVIDE (_stack = .);
+        PROVIDE (_stack_safe = .);
+    } > DLM
+
+    .heap2 (NOLOAD) : {
+        . = ALIGN(8);
+        __heap2_start__ = .;
+        . += HEAP2_SIZE;
+        . = ALIGN(8);
+        __heap2_end__ = .;
+    } > AXI_SRAM
+
+    __noncacheable_start__ = ORIGIN(NONCACHEABLE_RAM);
+    __noncacheable_end__ = ORIGIN(NONCACHEABLE_RAM) + LENGTH(NONCACHEABLE_RAM);
+
+    __fw_size__ = SIZEOF(.start) + SIZEOF(.vectors) + SIZEOF(.rel) + SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.axi_ram_code) + SIZEOF(.tdata)
+                + SIZEOF(.noncacheable.init) + SIZEOF(.fast_ram.init) + SIZEOF(.eh_frame) + SIZEOF(.eh_frame_hdr) + SIZEOF(.init_section);
+    __last_addr__ = __fast_ram_init_load_addr__ + SIZEOF(.fast_ram.init);
+    ASSERT(((__fw_size__ <= LENGTH(FLASH)) && (__last_addr__ <= (ORIGIN(FLASH) + LENGTH(FLASH)))), "******  FAILED! FLASH does not have enough space!  ******")
+}

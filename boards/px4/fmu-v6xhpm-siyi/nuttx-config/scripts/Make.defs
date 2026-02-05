@@ -1,0 +1,55 @@
+############################################################################
+# boards/risc-v/hpmicro/hpm6750evk2-sdk/scripts/Make.defs
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.  The
+# ASF licenses this file to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+############################################################################
+
+
+HPM_CHIP_SERIES = HPM6700
+HPM_CHIP_SELECT = HPM6750
+HPM_BOARD_SELECT = px4_fmu_v6xhpm_siyi
+CONFIG_XIP_FLASH_SIZE = 4M
+
+CFLAGS += -DFLASH_XIP -DUSE_I2C_DMA_MGR=1
+
+# Add include directories
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch$(DELIM)riscv$(DELIM)l1c
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SERIES)$(DELIM)$(HPM_CHIP_SELECT)
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SERIES)$(DELIM)$(HPM_CHIP_SELECT)$(DELIM)boot
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SERIES)$(DELIM)ip
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)drivers$(DELIM)inc
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)boards$(DELIM)$(HPM_BOARD_SELECT)
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)adc
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)camera
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)camera$(DELIM)mt9m114
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)camera$(DELIM)ov5640
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)camera$(DELIM)ov7725
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)codec$(DELIM)sgtl5000
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)codec$(DELIM)wm8960
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)debug_console
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)dma_mgr
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)dp83848
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)dp83867
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)rtl8201
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)enet_phy$(DELIM)rtl8211
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)i2c
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)spi
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)components$(DELIM)uart_lin
+CFLAGS += -I$(CHIP_DIR)$(DELIM)

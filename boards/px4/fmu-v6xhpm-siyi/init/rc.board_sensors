@@ -1,0 +1,9 @@
+#!/bin/sh
+#
+# PX4 FMUv6X SiYi specific board sensors init
+#------------------------------------------------------------------------------
+# icm45686 -b 2 -s -R 0 start
+# icp201xx -I -b 2 -a 0x63 start
+
+# External compass on GPS1/I2C0 (the 3rd external bus): standard Holybro Pixhawk 4 or CUAV V5 GPS/compass puck (with lights, safety button, and buzzer)
+# ist8310 -X -b 0 -R 10 start

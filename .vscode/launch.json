@@ -39,6 +39,43 @@
             ],
         },
         {
+            "name": "(cppdbg px4 fmu-v6xhpm-siyi) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/px4_fmu-v6xhpm-siyi_default/px4_fmu-v6xhpm-siyi_default.elf",
+            "args": [],
+            "targetArchitecture": "arm",
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/home/chenzhihong/Toolchain/rv32imac_zicsr_zifencei_multilib_b_ext-linux/bin/riscv32-unknown-elf-gdb",
+            "miDebuggerServerAddress": "localhost:3333",
+            "setupCommands": [
+                {
+                    "text": "-enable-pretty-printing",
+                },
+            ],
+            "customLaunchSetupCommands": [
+                {
+                    "text": "target remote localhost:3333",
+                },
+                {
+                    "text": "file ${workspaceFolder}/build/px4_fmu-v6xhpm-siyi_default/px4_fmu-v6xhpm-siyi_default.elf"
+                },
+                {
+                    "text": "tb __hpm_start",
+                },
+                {
+                    "text": "mon reset halt",
+                },
+                {
+                    "text": "load",
+                },
+            ],
+        },
+        {
             "name": "Debug with Remote GDB Server",
             "cwd": "${workspaceFolder}",
             "executable": "${workspaceFolder}/build/px4_fmu-v6xhpm_default/px4_fmu-v6xhpm_default.elf",
