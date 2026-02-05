@@ -47,11 +47,12 @@ static inline constexpr timer_io_channels_t initIOTimerGPIOInOut(Timer::TimerCha
 #define initIOTimerChannelCapture initIOTimerChannel // alias, used for param metadata generation
 
 static inline constexpr timer_io_channels_t initIOTimerChannel(const io_timers_t io_timers_conf[MAX_IO_TIMERS],
-		Timer::TimerChannel timer, GPIO::GPIOPin pin)
+		Timer::TimerChannel timer, GPIO::GPIOPin pin, Timer::TRGM_Px trgm_px)
 {
 	timer_io_channels_t ret = initIOTimerGPIOInOut(timer, pin);
 
 	ret.timer_channel = timer.channel;
+	ret.trgm_px = trgm_px;
 
 	// find timer index
 	ret.timer_index = 0xff;

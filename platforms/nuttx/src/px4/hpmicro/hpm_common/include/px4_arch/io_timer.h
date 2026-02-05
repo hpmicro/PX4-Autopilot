@@ -49,13 +49,10 @@ __BEGIN_DECLS
 #else
 #define MAX_IO_TIMERS			4
 #endif
-#if DIRECT_PWM_OUTPUT_CHANNELS > 8
-#define MAX_TIMER_IO_CHANNELS	DIRECT_PWM_OUTPUT_CHANNELS
-#else
-#define MAX_TIMER_IO_CHANNELS	4
-#endif
 
-#define MAX_LED_TIMERS			2
+#define MAX_TIMER_IO_CHANNELS		DIRECT_PWM_OUTPUT_CHANNELS
+
+#define MAX_LED_TIMERS		2
 #define MAX_TIMER_LED_CHANNELS	6
 
 #define IO_TIMER_ALL_MODES_CHANNELS 0
@@ -109,6 +106,7 @@ typedef struct timer_io_channels_t {
 	uint32_t	gpio_in;
 	uint8_t		timer_index;
 	uint8_t		timer_channel;
+	uint8_t		trgm_px;
 } timer_io_channels_t;
 
 typedef void (*channel_handler_t)(void *context, const io_timers_t *timer, uint32_t chan_index,

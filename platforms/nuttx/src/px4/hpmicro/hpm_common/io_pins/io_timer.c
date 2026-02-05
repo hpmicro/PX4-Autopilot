@@ -76,7 +76,9 @@ static int io_timer_handler3(int irq, void *context, void *arg);
 #define BOARD_ONESHOT_FREQ 8000000
 #endif
 
-#define PWM_CMP_OFFSET 8
+#define PWM_CMP_SHADOW_CH 23
+#define PWM_CH_TRGM_NOT_USED 0xFF
+#define PWM_OUT_CH8 8
 
 //                                                                NotUsed   PWMOut  PWMIn Capture OneShot Trigger Dshot LED PPS Other
 io_timer_channel_allocation_t channel_allocations[IOTimerChanModeSize] = { UINT16_MAX,   0,  0,  0, 0, 0, 0, 0, 0, 0 };
@@ -394,7 +396,7 @@ static int timer_set_rate(unsigned timer, unsigned rate)
 	cmp_config.mode = pwm_cmp_mode_output_compare;
 	cmp_config.cmp = reload;
 	cmp_config.update_trigger = pwm_shadow_register_update_on_modify;
-	pwm_load_cmp_shadow_on_match((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET - 1, &cmp_config);
+	pwm_load_cmp_shadow_on_match((PWM_Type *)io_timers[timer].base, PWM_CMP_SHADOW_CH, &cmp_config);
 
 	return 0;
 }
@@ -413,8 +415,8 @@ static inline void io_timer_set_oneshot_mode(unsigned timer, int changed_channel
 			cmp_config.mode = pwm_cmp_mode_output_compare;
 			cmp_config.cmp = 0xFFFFFF;
 			cmp_config.update_trigger = pwm_shadow_register_update_on_shlk;
-			pwm_config_cmp((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + timer_io_channels[channel].timer_channel * 2,  &cmp_config);
-			pwm_config_cmp((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + timer_io_channels[channel].timer_channel * 2 + 1,  &cmp_config);
+			pwm_config_cmp((PWM_Type *)io_timers[timer].base, channel * 2,  &cmp_config);
+			pwm_config_cmp((PWM_Type *)io_timers[timer].base, channel * 2 + 1,  &cmp_config);
 
 			changed_channels &= ~(1 << channel);
 
@@ -436,8 +438,8 @@ static inline void io_timer_set_PWM_mode(unsigned timer, int changed_channels)
 			cmp_config.mode = pwm_cmp_mode_output_compare;
 			cmp_config.cmp = 0xFFFFFF;
 			cmp_config.update_trigger = pwm_shadow_register_update_on_hw_event;
-			pwm_config_cmp((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + timer_io_channels[channel].timer_channel * 2,  &cmp_config);
-			pwm_config_cmp((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + timer_io_channels[channel].timer_channel * 2 + 1,  &cmp_config);
+			pwm_config_cmp((PWM_Type *)io_timers[timer].base, channel * 2,  &cmp_config);
+			pwm_config_cmp((PWM_Type *)io_timers[timer].base, channel * 2 + 1,  &cmp_config);
 
 			changed_channels &= ~(1 << channel);
 
@@ -643,6 +645,18 @@ int io_timer_channel_init(unsigned channel, io_timer_channel_mode_t mode,
 		/* Set up IO */
 		if (gpio) {
 			px4_arch_configgpio(gpio);
+
+			/* Config Trgm */
+
+			if (timer_io_channels[channel].trgm_px != PWM_CH_TRGM_NOT_USED) {
+				// configure TRGM input
+				trgm_output_t trgm_config;
+
+				trgm_config.invert = false;
+				trgm_config.type = trgm_output_same_as_input;
+				trgm_config.input = (timer_io_channels[channel].timer_channel - PWM_OUT_CH8) + HPM_TRGM0_INPUT_SRC_PWM0_CH8REF;    /* Only ch8 ~ ch23 should be use trigmux */
+				trgm_output_config((TRGM_Type *)io_timers[timer].trgm_base, (uint8_t)timer_io_channels[channel].trgm_px, &trgm_config);
+			}
 		}
 
 		/* configure the channel */
@@ -672,7 +686,7 @@ int io_timer_channel_init(unsigned channel, io_timer_channel_mode_t mode,
 		/*
 		 * config pwm
 		 */
-		if (status_success != pwm_setup_waveform((PWM_Type *)io_timers[timer].base, timer_io_channels[channel].timer_channel, &pwm_config, PWM_CMP_OFFSET + timer_io_channels[channel].timer_channel * 2, &cmp_config[0], 2)) {
+		if (status_success != pwm_setup_waveform((PWM_Type *)io_timers[timer].base, timer_io_channels[channel].timer_channel, &pwm_config, channel * 2, &cmp_config[0], 2)) {
 			printf("failed to setup waveform\n");
 		}
 
@@ -812,8 +826,8 @@ int io_timer_set_ccr(unsigned channel, uint16_t value)     // value in 1us, ones
 			} else {
 				ccr = (uint32_t)value * (clock_get_frequency(io_timers[timer].clock_name) / BOARD_PWM_FREQ);
 			}
-			pwm_cmp_update_cmp_value((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + (timer_io_channels[channel].timer_channel * 2), 0, 0);
-			pwm_cmp_update_cmp_value((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + (timer_io_channels[channel].timer_channel * 2) + 1, ccr , 0);
+			pwm_cmp_update_cmp_value((PWM_Type *)io_timers[timer].base, channel * 2, 0, 0);
+			pwm_cmp_update_cmp_value((PWM_Type *)io_timers[timer].base, channel * 2+ 1, ccr , 0);
 		}
 	}
 
@@ -831,7 +845,7 @@ uint16_t io_channel_get_ccr(unsigned channel)     // return value in 1us
 		if ((mode == IOTimerChanMode_PWMOut) ||
 		    (mode == IOTimerChanMode_OneShot) ||
 		    (mode == IOTimerChanMode_Trigger)) {
-			value = pwm_cmp_get_cmp_value((PWM_Type *)io_timers[timer].base, PWM_CMP_OFFSET + (timer_io_channels[channel].timer_channel * 2) + 1);
+			value = pwm_cmp_get_cmp_value((PWM_Type *)io_timers[timer].base, channel * 2 + 1);
 			if (mode == IOTimerChanMode_OneShot) {
 				value = value / (clock_get_frequency(io_timers[timer].clock_name) / BOARD_ONESHOT_FREQ);
 			} else {

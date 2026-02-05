@@ -62,12 +62,45 @@ enum Channel {
 	Channel4,
 	Channel5,
 	Channel6,
-	ChannelInvalid,
+	Channel7,
+	Channel8,
+	Channel9,
+	Channel10,
+	Channel11,
+	Channel12,
+	Channel13,
+	Channel14,
+	Channel15,
+	Channel16,
+	Channel17,
+	Channel18,
+	Channel19,
+	Channel20,
+	Channel21,
+	Channel22,
+	Channel23,
+	ChannelInvalid = 0xFF,
 };
 
 struct TimerChannel {
 	Timer timer;
 	Channel channel;
+};
+
+enum TRGM_Px {
+	TRGM_P0 = 0,
+	TRGM_P1,
+	TRGM_P2,
+	TRGM_P3,
+	TRGM_P4,
+	TRGM_P5,
+	TRGM_P6,
+	TRGM_P7,
+	TRGM_P8,
+	TRGM_P9,
+	TRGM_P10,
+	TRGM_P11,
+	TRGM_NotUsed = 0xFF,
 };
 }
 

@@ -42,11 +42,10 @@ constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
 };
 
 constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
-	initIOTimerChannel(io_timers, {Timer::PWM0, Timer::Channel4}, {GPIO::PortB, GPIO::Pin27}),
-	initIOTimerChannel(io_timers, {Timer::PWM0, Timer::Channel5}, {GPIO::PortB, GPIO::Pin26}),
-	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel0}, {GPIO::PortB, GPIO::Pin19}),
-	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel1}, {GPIO::PortB, GPIO::Pin18}),
-	// initIOTimerChannelCapture(io_timers, {Timer::Timer1, Timer::Channel2}, {GPIO::PortE, GPIO::Pin11}),
+	initIOTimerChannel(io_timers, {Timer::PWM0, Timer::Channel4}, {GPIO::PortB, GPIO::Pin27}, Timer::TRGM_NotUsed),
+	initIOTimerChannel(io_timers, {Timer::PWM0, Timer::Channel5}, {GPIO::PortB, GPIO::Pin26}, Timer::TRGM_NotUsed),
+	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel0}, {GPIO::PortB, GPIO::Pin19}, Timer::TRGM_NotUsed),
+	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel1}, {GPIO::PortB, GPIO::Pin18}, Timer::TRGM_NotUsed),
 };
 
 constexpr io_timers_channel_mapping_t io_timers_channel_mapping =

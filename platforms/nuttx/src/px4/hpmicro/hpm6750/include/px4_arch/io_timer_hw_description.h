@@ -38,20 +38,11 @@
 static inline constexpr timer_io_channels_t initIOTimerGPIOInOut(Timer::TimerChannel timer, GPIO::GPIOPin pin)
 {
 	timer_io_channels_t ret{};
-	uint32_t gpio_af = 0;
-
-	switch (timer.timer) {
-	case Timer::PWM0:
-	case Timer::PWM1:
-	case Timer::PWM2:
-	case Timer::PWM3:
-		gpio_af = GPIO_AF16;
-		break;
-	}
-
 	uint32_t pin_port = getGPIOPort(pin.port) | getGPIOPin(pin.pin);
-	ret.gpio_in = gpio_af | (GPIO_ALT | GPIO_FLOAT) | pin_port;
-	ret.gpio_out = gpio_af | (GPIO_ALT | GPIO_PUSHPULL) | pin_port;
+
+	ret.gpio_in = GPIO_AF16 | (GPIO_ALT | GPIO_FLOAT) | pin_port;
+	ret.gpio_out = GPIO_AF16 | (GPIO_ALT | GPIO_PUSHPULL) | pin_port;
+
 	return ret;
 }
 
