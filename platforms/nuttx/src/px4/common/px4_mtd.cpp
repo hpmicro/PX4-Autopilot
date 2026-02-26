@@ -75,9 +75,9 @@ static int ramtron_attach(mtd_instance_s &instance)
 	return ENXIO;
 #else
 
-	/* start the RAMTRON driver at 30MHz */
+	/* start the RAMTRON driver at 40MHz */
 
-	unsigned long spi_speed_hz = 30'000'000;
+	unsigned long spi_speed_hz = 40'000'000;
 
 	for (int i = 0; spi_speed_hz > 0; i++) {
 		/* initialize the right spi */
