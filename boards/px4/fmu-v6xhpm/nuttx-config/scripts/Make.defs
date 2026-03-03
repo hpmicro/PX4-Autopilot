@@ -28,6 +28,7 @@ CFLAGS += -DFLASH_XIP -DUSE_I2C_DMA_MGR=1
 
 # Add include directories
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch
+CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch$(DELIM)riscv$(DELIM)intc
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)arch$(DELIM)riscv$(DELIM)l1c
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SERIES)$(DELIM)$(HPM_CHIP_SELECT)
 CFLAGS += -I$(CHIP_DIR)$(DELIM)hpm_sdk$(DELIM)soc$(DELIM)$(HPM_CHIP_SERIES)$(DELIM)$(HPM_CHIP_SELECT)$(DELIM)boot

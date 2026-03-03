@@ -4,6 +4,7 @@ set(HPM_BOARD_SELECT px4_fmu_v6xhpm)
 
 set(HPM_SDK_PATH ${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/nuttx/arch/risc-v/src/hpmicro/hpm_sdk)
 include_directories(${HPM_SDK_PATH}/arch)
+include_directories(${HPM_SDK_PATH}/arch/riscv/intc)
 include_directories(${HPM_SDK_PATH}/arch/riscv/l1c)
 include_directories(${HPM_SDK_PATH}/soc/${HPM_CHIP_SERIES}/${HPM_CHIP_SELECT})
 include_directories(${HPM_SDK_PATH}/soc/${HPM_CHIP_SERIES}/${HPM_CHIP_SELECT}/boot)
