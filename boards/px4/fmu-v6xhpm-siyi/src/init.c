@@ -279,16 +279,15 @@ hpm_boardinitialize(void)
 	return 0;
 }
 
-void rc_input_invert(bool invert)
-{
-    trgm_output_t config = { 0 };
+// void rc_input_invert(bool invert)
+// {
+//     trgm_output_t config = { 0 };
 
-    HPM_IOC->PAD[IOC_PAD_PD24].FUNC_CTL = IOC_PD24_FUNC_CTL_TRGM2_P_10;
-    HPM_IOC->PAD[IOC_PAD_PD25].FUNC_CTL = IOC_PD25_FUNC_CTL_TRGM2_P_08;
+//     HPM_IOC->PAD[IOC_PAD_PD24].FUNC_CTL = IOC_PD24_FUNC_CTL_TRGM2_P_10;
+//     HPM_IOC->PAD[IOC_PAD_PD25].FUNC_CTL = IOC_PD25_FUNC_CTL_TRGM2_P_08;
 
-    config.invert = true;
-    config.input = HPM_TRGM2_INPUT_SRC_TRGM2_P10;
-    trgm_output_config(HPM_TRGM2, HPM_TRGM2_OUTPUT_SRC_TRGM2_P8, &config);
-    trgm_enable_io_output(HPM_TRGM2, 1 << 8);
-}
-
+//     config.invert = true;
+//     config.input = HPM_TRGM2_INPUT_SRC_TRGM2_P10;
+//     trgm_output_config(HPM_TRGM2, HPM_TRGM2_OUTPUT_SRC_TRGM2_P8, &config);
+//     trgm_enable_io_output(HPM_TRGM2, 1 << 8);
+// }
