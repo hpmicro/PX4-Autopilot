@@ -79,6 +79,7 @@
 #ifdef CONFIG_HPM_USBDEV
 #  include "hpm_usbdev.h"
 #endif
+#include "hpm_iomux.h"
 #include "hpm_gpio_drv.h"
 #include "hpm_trgm_drv.h"
 
