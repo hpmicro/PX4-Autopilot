@@ -35,8 +35,45 @@
 #include <drivers/drv_hrt.h>
 
 #if defined(CONFIG_I2C)
+
 /****************************************************************************
- * Name: hpm6750_i2cbus_pins_initialize
+ * Name: board_i2cbus_clear
+ *
+ * Description:
+ *   Clear an I2C bus by performing a recovery sequence. Toggles the clock
+ *   line up to 9 times while monitoring the SDA line to recover from a stuck
+ *   I2C slave device.
+ *
+ * Input Parameters:
+ *   gpio_sda  - GPIO pin for SDA (data line)
+ *   gpio_clk  - GPIO pin for SCL (clock line)
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+void board_i2cbus_clear(uint32_t gpio_sda, uint32_t gpio_clk)
+{
+    px4_arch_configgpio(gpio_sda);
+    px4_arch_configgpio(gpio_clk);
+
+    for (uint32_t i = 0; i < 9; i++) {
+        px4_arch_gpiowrite(gpio_clk, 1);
+        for (uint32_t j = 0; j < 5000; j++) {
+            __asm__ volatile("nop");
+        }
+        px4_arch_gpiowrite(gpio_clk, 0);
+        for (uint32_t j = 0; j < 5000; j++) {
+            __asm__ volatile("nop");
+        }
+    }
+
+    px4_arch_unconfiggpio(gpio_sda);
+    px4_arch_unconfiggpio(gpio_clk);
+}
+
+/****************************************************************************
+ * Name: hpm_i2cbus_pins_init
  *
  * Description:
  *   Initialize the selected I2C port pins
@@ -53,24 +90,28 @@ int hpm_i2cbus_pins_init(int port)
 	switch(port){
 		case 0:
 #if defined(CONFIG_HPM_I2C0)
+			board_i2cbus_clear(GPIO_I2C0_SDA_GPIO, GPIO_I2C0_SCL_GPIO);
 			px4_arch_configgpio(GPIO_I2C0_SCL);
 			px4_arch_configgpio(GPIO_I2C0_SDA);
 #endif
 			break;
 		case 1:
 #if defined(CONFIG_HPM_I2C1)
+			board_i2cbus_clear(GPIO_I2C1_SDA_GPIO, GPIO_I2C1_SCL_GPIO);
 			px4_arch_configgpio(GPIO_I2C1_SCL);
 			px4_arch_configgpio(GPIO_I2C1_SDA);
 #endif
 			break;
 		case 2:
 #if defined(CONFIG_HPM_I2C2)
+			board_i2cbus_clear(GPIO_I2C2_SDA_GPIO, GPIO_I2C2_SCL_GPIO);
 			px4_arch_configgpio(GPIO_I2C2_SCL);
 			px4_arch_configgpio(GPIO_I2C2_SDA);
 #endif
 			break;
 		case 3:
 #if defined(CONFIG_HPM_I2C3)
+			board_i2cbus_clear(GPIO_I2C3_SDA_GPIO, GPIO_I2C3_SCL_GPIO);
 			px4_arch_configgpio(GPIO_I2C3_SCL);
 			px4_arch_configgpio(GPIO_I2C3_SDA);
 #endif
