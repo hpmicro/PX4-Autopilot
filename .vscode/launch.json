@@ -92,5 +92,23 @@
             "gdbPath": "riscv32-unknown-elf-gdb",
             "preLaunchTask": "Launch OpenOCD",
         },
+        {
+        "cwd": "${workspaceFolder}",
+        "executable": "${workspaceFolder}/build/px4_fmu-v6xhpm_default/px4_fmu-v6xhpm_default.elf",
+        "gdbPath": "/home/rcsn/lrc/toolchains/rv32imac_zicsr_zifencei_multilib_b_ext-linux/bin/riscv32-unknown-elf-gdb",
+        "armToolchainPath": "/home/rcsn/lrc/toolchains/rv32imac_zicsr_zifencei_multilib_b_ext-linux/bin",
+        "toolchainPrefix":"riscv32-unknown-elf-",
+        "serverpath": "/opt/SEGGER/JLink_V914a/JLinkGDBServerCLExe",
+        "name": "Debug with JLink",
+        "request": "launch",
+        "type": "cortex-debug",
+        "device": "HPM6750xVMx",
+        // "runToEntryPoint": "main",
+        "showDevDebugOutput": "raw",
+        "interface": "jtag",
+        "servertype": "jlink",
+        // "svdFile": "${workspaceFolder}/soc/HPM5361/HPM5361_svd.xml"
+        // "svdFile": "${workspaceFolder}/soc/HPM6700/HPM6750/HPM6750_svd.xml"
+        }
     ],
 }

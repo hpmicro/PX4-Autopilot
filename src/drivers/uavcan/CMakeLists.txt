@@ -38,10 +38,12 @@ set(DSDLC_DIR "${PX4_SOURCE_DIR}/src/drivers/uavcan/libdronecan/dsdl")
 
 px4_add_git_submodule(TARGET git_uavcan_dsdl PATH ${DSDLC_DIR})
 px4_add_git_submodule(TARGET git_uavcan_pydronecan PATH ${LIBDRONECAN_DIR}/libuavcan/dsdl_compiler/pydronecan)
-
+message(STATUS "[UAVCAN] CONFIG_ARCH_CHIP='${CONFIG_ARCH_CHIP}' CONFIG_NET_CAN='${CONFIG_NET_CAN}' ")
 set(UAVCAN_PLATFORM "generic")
+set(UAVCAN_CAN_IMPL "")
 
 if(CONFIG_ARCH_CHIP)
+
 	if(${CONFIG_NET_CAN} MATCHES "y")
 		set(UAVCAN_DRIVER "socketcan")
 		set(UAVCAN_TIMER 1)
@@ -60,6 +62,18 @@ if(CONFIG_ARCH_CHIP)
 		if (DEFINED config_uavcan_timer_override)
 			set (UAVCAN_TIMER  ${config_uavcan_timer_override})
 		endif()
+	elseif(${CONFIG_ARCH_CHIP} MATCHES "hpmicro")
+		if(DEFINED CONFIG_ARCH_CHIP_HPM6750_SDK OR DEFINED CONFIG_ARCH_CHIP_HPM6360_SDK)
+			set(UAVCAN_DRIVER "hpmicro")
+			set(UAVCAN_CAN_IMPL "can")
+		elseif(DEFINED CONFIG_ARCH_CHIP_HPM6280_SDK OR DEFINED CONFIG_ARCH_CHIP_HPM5361_SDK)
+			set(UAVCAN_DRIVER "hpmicro")
+			set(UAVCAN_CAN_IMPL "mcan")
+		endif()
+		set(UAVCAN_TIMER 1)
+		if (DEFINED config_uavcan_timer_override)
+			set (UAVCAN_TIMER  ${config_uavcan_timer_override})
+		endif()
 	endif()
 endif()
 
@@ -67,9 +81,12 @@ if(NOT DEFINED UAVCAN_DRIVER)
 	message(FATAL_ERROR "UAVCAN_DRIVER not set")
 endif()
 
+
 if(NOT config_uavcan_num_ifaces)
 	message(FATAL_ERROR "config_uavcan_num_ifaces not set")
 endif()
+
+message(STATUS "[UAVCAN] config_uavcan_num_ifaces='${config_uavcan_num_ifaces}'")
 
 string(TOUPPER "${PX4_PLATFORM}" OS_UPPER)
 string(TOUPPER "${UAVCAN_DRIVER}" UAVCAN_DRIVER_UPPER)
@@ -79,7 +96,7 @@ add_definitions(
 	-DUAVCAN_${UAVCAN_DRIVER_UPPER}_TIMER_NUMBER=${UAVCAN_TIMER}
 	-DUAVCAN_NUM_IFACES=${config_uavcan_num_ifaces}
 	-DUAVCAN_CPP_VERSION=UAVCAN_CPP03
-	-DUAVCAN_DRIVER=uavcan_${UAVCAN_DRIVER}
+	-DUAVCAN_DRIVER=uavcan_${UAVCAN_DRIVER}_${UAVCAN_CAN_IMPL}
 	-DUAVCAN_IMPLEMENT_PLACEMENT_NEW=1
 	-DUAVCAN_MEM_POOL_BLOCK_SIZE=48
 	-DUAVCAN_NO_ASSERTIONS
@@ -96,8 +113,21 @@ add_subdirectory(${LIBDRONECAN_DIR} libdronecan EXCLUDE_FROM_ALL)
 add_dependencies(uavcan prebuild_targets)
 
 # driver
-add_subdirectory(${LIBDRONECAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver libuavcan_drivers EXCLUDE_FROM_ALL)
-target_include_directories(uavcan_${UAVCAN_DRIVER}_driver PUBLIC
+if(UAVCAN_CAN_IMPL)
+    add_subdirectory(${LIBDRONECAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/${UAVCAN_CAN_IMPL} libuavcan_drivers EXCLUDE_FROM_ALL)
+    set(UAVCAN_DRIVER_INCLUDE ${LIBDRONECAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/${UAVCAN_CAN_IMPL}/include)
+    set(UAVCAN_DRIVER_TARGET uavcan_${UAVCAN_DRIVER}_${UAVCAN_CAN_IMPL}_driver)
+else()
+    add_subdirectory(${LIBDRONECAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver libuavcan_drivers EXCLUDE_FROM_ALL)
+    set(UAVCAN_DRIVER_INCLUDE ${LIBDRONECAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/include)
+    set(UAVCAN_DRIVER_TARGET uavcan_${UAVCAN_DRIVER}_driver)
+endif()
+
+if(NOT TARGET ${UAVCAN_DRIVER_TARGET})
+    message(FATAL_ERROR "[UAVCAN] not generate target: ${UAVCAN_DRIVER_TARGET}")
+endif()
+
+target_include_directories(${UAVCAN_DRIVER_TARGET} PUBLIC
 	${LIBDRONECAN_DIR}/libuavcan/include
 	${LIBDRONECAN_DIR}/libuavcan/include/dsdlc_generated
 )
@@ -143,6 +173,7 @@ px4_add_module(
 		${LIBDRONECAN_DIR}/libuavcan/include/dsdlc_generated
 		${LIBDRONECAN_DIR_DRIVERS}/posix/include
 		${LIBDRONECAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/include
+		${UAVCAN_DRIVER_INCLUDE}
 	SRCS
 		arming_status.cpp
 		arming_status.hpp
@@ -194,7 +225,7 @@ px4_add_module(
 
 		git_uavcan_dsdl
 		git_uavcan_pydronecan
-		uavcan_${UAVCAN_DRIVER}_driver
+		${UAVCAN_DRIVER_TARGET}
 
 		drivers_rangefinder # Fix undefined reference when no distance sensors are selected
 

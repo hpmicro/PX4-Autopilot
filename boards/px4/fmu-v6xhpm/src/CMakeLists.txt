@@ -39,6 +39,7 @@ px4_add_library(drivers_board
 	timer_config.cpp
 	usb.c
 	sdhc.c
+	can.c
 	#xpi_fram.c
 	#xpi_nor_flash.c
 	${SRCS}

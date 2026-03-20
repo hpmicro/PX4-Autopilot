@@ -155,6 +155,8 @@ extern int board_read_VBUS_state(void);
 
 extern void rc_input_invert(bool invert);
 
+extern int hpm_init_can_pins(int port);
+
 #include <px4_platform_common/board_common.h>
 
 #endif /* __ASSEMBLY__ */
