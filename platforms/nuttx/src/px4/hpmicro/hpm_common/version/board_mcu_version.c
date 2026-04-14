@@ -49,12 +49,16 @@ int board_mcu_version(char *rev, const char **revstr, const char **errata)
 	if(chip_id == 0x20201341){
 		*revstr = "HPM6750IVM2";
 		*rev = '2';
-		*errata = NULL;
+		if (errata) {
+			*errata = NULL;
+		}
 		return 2;
 	} else if (chip_id == 0x21501341){
 		*revstr = "HPM6754IAN2";
 		*rev = '2';
-		*errata = NULL;
+		if (errata) {
+			*errata = NULL;
+		}
 		return 2;
 	}
 
