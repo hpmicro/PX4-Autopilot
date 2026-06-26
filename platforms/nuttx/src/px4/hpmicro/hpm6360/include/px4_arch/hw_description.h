@@ -1,21 +1,20 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (C) 2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *	notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
+ *	notice, this list of conditions and the following disclaimer in
+ *	the documentation and/or other materials provided with the
+ *	distribution.
  * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *	used to endorse or promote products derived from this software
+ *	without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -31,41 +30,78 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#pragma once
 
-/**
- * @file board_mcu_version.c
- * Implementation of STM32 based SoC version API
+#include "../../../hpm_common/include/px4_arch/hw_description.h"
+
+/*
+ * PWM
  */
 
-#include <px4_platform_common/px4_config.h>
-#include <px4_platform_common/defines.h>
-#include <px4_arch/romapi.h>
-
-int board_mcu_version(char *rev, const char **revstr, const char **errata)
+namespace Timer
 {
+enum Timer {
+	PWM0 = 0,
+	PWM1,
+};
 
-	uint32_t chip_id = g_xpi_otp_driver_interface->read_from_shadow(64);// CHIPID
+enum Channel {
+	Channel0 = 0,
+	Channel1,
+	Channel2,
+	Channel3,
+	Channel4,
+	Channel5,
+	Channel6,
+	Channel7,
+	Channel8,
+	Channel9,
+	Channel10,
+	Channel11,
+	Channel12,
+	Channel13,
+	Channel14,
+	Channel15,
+	Channel16,
+	Channel17,
+	Channel18,
+	Channel19,
+	Channel20,
+	Channel21,
+	Channel22,
+	Channel23,
+	ChannelInvalid = 0xFF,
+};
 
-	if(chip_id == 0x20201341){
-		*revstr = "HPM6750IVM2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x21501341){
-		*revstr = "HPM6754IAN2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x20202141){
-		*revstr = "HPM6360IPA2";
-		*rev = '2';
-		*errata = NULL;
-		return 2;
+struct TimerChannel {
+	Timer timer;
+	Channel channel;
+};
+
+enum TRGM_Px {
+	TRGM_P0 = 0,
+	TRGM_P1,
+	TRGM_P2,
+	TRGM_P3,
+	TRGM_P4,
+	TRGM_P5,
+	TRGM_P6,
+	TRGM_P7,
+	TRGM_P8,
+	TRGM_P9,
+	TRGM_P10,
+	TRGM_P11,
+	TRGM_NotUsed = 0xFF,
+};
+}
+
+static inline constexpr uint32_t timerBaseRegister(Timer::Timer timer)
+{
+	switch (timer) {
+	case Timer::PWM0: return HPM_PWM0_BASE;
+
+	case Timer::PWM1: return HPM_PWM1_BASE;
 	}
 
-	return -1;
+	return 0;
 }

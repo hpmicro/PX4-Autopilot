@@ -1,7 +1,8 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (C) 2016-2018 Gregory Nutt. All rights reserved.
+ *   Authors: Gregory Nutt <gnutt@nuttx.org>
+ *            David Sidrane <david_s5@nscdg.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -13,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
+ * 3. Neither the name NuttX nor the names of its contributors may be
  *    used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -32,40 +33,67 @@
  *
  ****************************************************************************/
 
-/**
- * @file board_mcu_version.c
- * Implementation of STM32 based SoC version API
- */
+/****************************************************************************
+ * Included Files
+ ****************************************************************************/
 
 #include <px4_platform_common/px4_config.h>
-#include <px4_platform_common/defines.h>
-#include <px4_arch/romapi.h>
+#include <px4_log.h>
 
-int board_mcu_version(char *rev, const char **revstr, const char **errata)
+#include <stdbool.h>
+#include <stdio.h>
+#include <debug.h>
+#include <errno.h>
+#include <debug.h>
+
+#include <nuttx/sdio.h>
+#include <nuttx/mmcsd.h>
+
+#include "chip.h"
+#include "hpm_sdmmc.h"
+
+#include "board_config.h"
+
+#if defined(CONFIG_HPM_SDXC0) || defined(CONFIG_HPM_SDXC1)
+int hpm_sdioinitialize(void)
 {
+    struct sdio_dev_s *dev = NULL;
+    int ret;
+#ifdef CONFIG_HPM_SDXC0
+    /* Initialize SDXC0 */
+    dev = sdio_initialize(0);
+    if (dev == NULL)
+    {
+      syslog(LOG_ERR, "ERROR: sdio_initialize(0) failed\n");
+      return -EINVAL;
+    }
 
-	uint32_t chip_id = g_xpi_otp_driver_interface->read_from_shadow(64);// CHIPID
+    ret = mmcsd_slotinitialize(0, dev);
+    if (ret != OK)
+    {
+      ferr("ERROR: Failed to bind SDIO to the MMC/SD driver: %d\n", ret);
+      return ret;
+    }
+#endif
+#ifdef CONFIG_HPM_SDXC1
+    /* Initialize SDXC1 */
+    dev = sdio_initialize(1);
+    if (dev == NULL)
+    {
+      syslog(LOG_ERR, "ERROR: sdio_initialize(1) failed\n");
+      return -EINVAL;
+    }
 
-	if(chip_id == 0x20201341){
-		*revstr = "HPM6750IVM2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x21501341){
-		*revstr = "HPM6754IAN2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x20202141){
-		*revstr = "HPM6360IPA2";
-		*rev = '2';
-		*errata = NULL;
-		return 2;
-	}
+    ret = mmcsd_slotinitialize(0, dev);
+    if (ret != OK)
+    {
+      ferr("ERROR: Failed to bind SDIO to the MMC/SD driver: %d\n", ret);
+      return ret;
+    }
+#endif
 
-	return -1;
+    sdio_mediachange(dev, true);
+
+    return ret;
 }
+#endif

@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (C) 2016, 2018 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,39 +32,35 @@
  ****************************************************************************/
 
 /**
- * @file board_mcu_version.c
- * Implementation of STM32 based SoC version API
+ * @file can.c
+ *
+ * Board-specific can functions.
  */
 
+/************************************************************************************
+ * Included Files
+ ************************************************************************************/
 #include <px4_platform_common/px4_config.h>
-#include <px4_platform_common/defines.h>
-#include <px4_arch/romapi.h>
 
-int board_mcu_version(char *rev, const char **revstr, const char **errata)
+#include <sys/types.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <debug.h>
+#include "hpm_gpio_drv.h"
+#include "hpm_iomux.h"
+#include "hpm_batt_iomux.h"
+
+int hpm_init_can_pins(int port)
 {
+	if (port == 0) {
+		HPM_IOC->PAD[IOC_PAD_PC09].FUNC_CTL = IOC_PC09_FUNC_CTL_CAN0_TXD;
+		HPM_IOC->PAD[IOC_PAD_PC10].FUNC_CTL = IOC_PC10_FUNC_CTL_CAN0_RXD;
+	} else if (port == 1) {
+		HPM_IOC->PAD[IOC_PAD_PZ04].FUNC_CTL = IOC_PZ04_FUNC_CTL_CAN1_TXD;
+		HPM_BIOC->PAD[IOC_PAD_PZ04].FUNC_CTL = BIOC_PZ04_FUNC_CTL_SOC_PZ_04;
 
-	uint32_t chip_id = g_xpi_otp_driver_interface->read_from_shadow(64);// CHIPID
-
-	if(chip_id == 0x20201341){
-		*revstr = "HPM6750IVM2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x21501341){
-		*revstr = "HPM6754IAN2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x20202141){
-		*revstr = "HPM6360IPA2";
-		*rev = '2';
-		*errata = NULL;
-		return 2;
+		HPM_IOC->PAD[IOC_PAD_PZ05].FUNC_CTL = IOC_PZ05_FUNC_CTL_CAN1_RXD;
+		HPM_BIOC->PAD[IOC_PAD_PZ05].FUNC_CTL = BIOC_PZ05_FUNC_CTL_SOC_PZ_05;
 	}
-
-	return -1;
+	return 0;
 }

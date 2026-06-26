@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,41 +30,61 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#pragma once
 
-/**
- * @file board_mcu_version.c
- * Implementation of STM32 based SoC version API
- */
+#include "../../../hpm_common/include/px4_arch/spi_hw_description.h"
 
-#include <px4_platform_common/px4_config.h>
-#include <px4_platform_common/defines.h>
-#include <px4_arch/romapi.h>
+// #if defined(CONFIG_SPI)
 
-int board_mcu_version(char *rev, const char **revstr, const char **errata)
-{
+// constexpr bool validateSPIConfig(const px4_spi_bus_t spi_busses_conf[SPI_BUS_MAX_BUS_ITEMS])
+// {
+// 	const bool nuttx_enabled_spi_buses[] = {
+// #ifdef CONFIG_HPM_SPI0
+// 		true,
+// #else
+// 		false,
+// #endif
+// #ifdef CONFIG_HPM_SPI1
+// 		true,
+// #else
+// 		false,
+// #endif
+// #ifdef CONFIG_HPM_SPI2
+// 		true,
+// #else
+// 		false,
+// #endif
+// #ifdef CONFIG_HPM_SPI3
+// 		true,
+// #else
+// 		false,
+// #endif
+// #ifdef CONFIG_HPM_SPI4
+// 		true,
+// #else
+// 		false,
+// #endif
+// #ifdef CONFIG_HPM_SPI5
+// 		true,
+// #else
+// 		false,
+// #endif
+// 	};
 
-	uint32_t chip_id = g_xpi_otp_driver_interface->read_from_shadow(64);// CHIPID
+// 	for (unsigned i = 0; i < sizeof(nuttx_enabled_spi_buses) / sizeof(nuttx_enabled_spi_buses[0]); ++i) {
+// 		bool found_bus = false;
 
-	if(chip_id == 0x20201341){
-		*revstr = "HPM6750IVM2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x21501341){
-		*revstr = "HPM6754IAN2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x20202141){
-		*revstr = "HPM6360IPA2";
-		*rev = '2';
-		*errata = NULL;
-		return 2;
-	}
+// 		for (int j = 0; j < SPI_BUS_MAX_BUS_ITEMS; ++j) {
+// 			if (spi_busses_conf[j].bus == (int)i) {
+// 				found_bus = true;
+// 			}
+// 		}
 
-	return -1;
-}
+// 		// Either the bus is enabled in NuttX and configured in spi_busses_conf, or disabled and not configured
+// 		constexpr_assert(found_bus == nuttx_enabled_spi_buses[i], "SPI bus config mismatch (CONFIG_HPM_SPIx)");
+// 	}
+
+// 	return false;
+// }
+
+// #endif // CONFIG_SPI

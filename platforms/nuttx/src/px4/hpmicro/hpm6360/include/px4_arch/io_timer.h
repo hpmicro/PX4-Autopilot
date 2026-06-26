@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,41 +30,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#pragma once
 
-/**
- * @file board_mcu_version.c
- * Implementation of STM32 based SoC version API
- */
-
-#include <px4_platform_common/px4_config.h>
-#include <px4_platform_common/defines.h>
-#include <px4_arch/romapi.h>
-
-int board_mcu_version(char *rev, const char **revstr, const char **errata)
-{
-
-	uint32_t chip_id = g_xpi_otp_driver_interface->read_from_shadow(64);// CHIPID
-
-	if(chip_id == 0x20201341){
-		*revstr = "HPM6750IVM2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x21501341){
-		*revstr = "HPM6754IAN2";
-		*rev = '2';
-		if (errata) {
-			*errata = NULL;
-		}
-		return 2;
-	} else if (chip_id == 0x20202141){
-		*revstr = "HPM6360IPA2";
-		*rev = '2';
-		*errata = NULL;
-		return 2;
-	}
-
-	return -1;
-}
+#include "../../../hpm_common/include/px4_arch/io_timer.h"
