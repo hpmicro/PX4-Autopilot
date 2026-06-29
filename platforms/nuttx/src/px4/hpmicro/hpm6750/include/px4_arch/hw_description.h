@@ -33,3 +33,81 @@
 #pragma once
 
 #include "../../../hpm_common/include/px4_arch/hw_description.h"
+
+/*
+ * PWM
+ */
+
+namespace Timer
+{
+enum Timer {
+       PWM0 = 0,
+       PWM1,
+       PWM2,
+       PWM3,
+};
+
+enum Channel {
+       Channel0 = 0,
+       Channel1,
+       Channel2,
+       Channel3,
+       Channel4,
+       Channel5,
+       Channel6,
+       Channel7,
+       Channel8,
+       Channel9,
+       Channel10,
+       Channel11,
+       Channel12,
+       Channel13,
+       Channel14,
+       Channel15,
+       Channel16,
+       Channel17,
+       Channel18,
+       Channel19,
+       Channel20,
+       Channel21,
+       Channel22,
+       Channel23,
+       ChannelInvalid = 0xFF,
+};
+
+struct TimerChannel {
+       Timer timer;
+       Channel channel;
+};
+
+enum TRGM_Px {
+       TRGM_P0 = 0,
+       TRGM_P1,
+       TRGM_P2,
+       TRGM_P3,
+       TRGM_P4,
+       TRGM_P5,
+       TRGM_P6,
+       TRGM_P7,
+       TRGM_P8,
+       TRGM_P9,
+       TRGM_P10,
+       TRGM_P11,
+       TRGM_NotUsed = 0xFF,
+};
+}
+
+static inline constexpr uint32_t timerBaseRegister(Timer::Timer timer)
+{
+       switch (timer) {
+       case Timer::PWM0: return HPM_PWM0_BASE;
+
+       case Timer::PWM1: return HPM_PWM1_BASE;
+
+       case Timer::PWM2: return HPM_PWM2_BASE;
+
+       case Timer::PWM3: return HPM_PWM3_BASE;
+       }
+
+       return 0;
+}

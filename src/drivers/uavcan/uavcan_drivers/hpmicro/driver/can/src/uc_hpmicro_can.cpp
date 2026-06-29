@@ -358,29 +358,38 @@ uavcan::int16_t CanIface::configureFilters(const uavcan::CanFilterConfig *filter
 uint32_t CanIface::init_can_clock(CAN_Type *ptr)
 {
     uint32_t freq = 0;
+#if defined(HPM_CAN0)
     if (ptr == HPM_CAN0) {
         /* Set the CAN0 peripheral clock to 80MHz */
         clock_set_source_divider(clock_can0, clk_src_pll1_clk1, 5);
         clock_add_to_group(clock_can0, 0);
         freq = clock_get_frequency(clock_can0);
-    } else if (ptr == HPM_CAN1) {
+    }
+#endif
+#if defined(HPM_CAN1)
+    if (ptr == HPM_CAN1) {
         /* Set the CAN1 peripheral clock to 80MHz */
         clock_set_source_divider(clock_can1, clk_src_pll1_clk1, 5);
         clock_add_to_group(clock_can1, 0);
         freq = clock_get_frequency(clock_can1);
-    } else if (ptr == HPM_CAN2) {
+    }
+#endif
+#if defined(HPM_CAN2)
+    if (ptr == HPM_CAN2) {
         /* Set the CAN2 peripheral clock to 80MHz */
         clock_set_source_divider(clock_can2, clk_src_pll1_clk1, 5);
         clock_add_to_group(clock_can2, 0);
         freq = clock_get_frequency(clock_can2);
-    } else if (ptr == HPM_CAN3) {
+    }
+#endif
+#if defined(HPM_CAN3)
+    if (ptr == HPM_CAN3) {
         /* Set the CAN3 peripheral clock to 80MHz */
         clock_set_source_divider(clock_can3, clk_src_pll1_clk1, 5);
         clock_add_to_group(clock_can3, 0);
         freq = clock_get_frequency(clock_can3);
-    } else {
-        /* Invalid CAN instance */
     }
+#endif
     return freq;
 }
 

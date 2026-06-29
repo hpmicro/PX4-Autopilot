@@ -63,10 +63,18 @@
 #include "hpm_pwm_drv.h"
 #include "hpm_clock_drv.h"
 
+#if defined(CONFIG_HPM_PWM0)
 static int io_timer_handler0(int irq, void *context, void *arg);
+#endif
+#if defined(CONFIG_HPM_PWM1)
 static int io_timer_handler1(int irq, void *context, void *arg);
+#endif
+#if defined(CONFIG_HPM_PWM2)
 static int io_timer_handler2(int irq, void *context, void *arg);
+#endif
+#if defined(CONFIG_HPM_PWM3)
 static int io_timer_handler3(int irq, void *context, void *arg);
+#endif
 
 #if !defined(BOARD_PWM_FREQ)
 #define BOARD_PWM_FREQ 1000000
@@ -166,25 +174,33 @@ static int io_timer_handler(uint16_t timer_index)
 	return 0;
 }
 
+#if defined(CONFIG_HPM_PWM0)
 int io_timer_handler0(int irq, void *context, void *arg)
 {
 	return io_timer_handler(0);
 }
+#endif
 
+#if defined(CONFIG_HPM_PWM1)
 int io_timer_handler1(int irq, void *context, void *arg)
 {
 	return io_timer_handler(1);
 }
+#endif
 
+#if defined(CONFIG_HPM_PWM2)
 int io_timer_handler2(int irq, void *context, void *arg)
 {
 	return io_timer_handler(2);
 }
+#endif
 
+#if defined(CONFIG_HPM_PWM3)
 int io_timer_handler3(int irq, void *context, void *arg)
 {
 	return io_timer_handler(3);
 }
+#endif
 
 static inline int validate_timer_index(unsigned timer)
 {
@@ -524,13 +540,21 @@ int io_timer_init_timer(unsigned timer, io_timer_channel_mode_t mode)
 		xcpt_t handler;
 
 		switch (io_timers[timer].base) {
+#if defined(CONFIG_HPM_PWM0)
 		case HPM_PWM0_BASE: handler = io_timer_handler0; break;
+#endif
 
+#if defined(CONFIG_HPM_PWM1)
 		case HPM_PWM1_BASE: handler = io_timer_handler1; break;
+#endif
 
+#if defined(CONFIG_HPM_PWM2)
 		case HPM_PWM2_BASE: handler = io_timer_handler2; break;
+#endif
 
+#if defined(CONFIG_HPM_PWM3)
 		case HPM_PWM3_BASE: handler = io_timer_handler3; break;
+#endif
 
 		default:
 			handler = NULL;
