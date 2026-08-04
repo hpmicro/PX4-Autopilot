@@ -5,4 +5,5 @@ add_subdirectory(../hpm_common/board_critmon board_critmon)
 add_subdirectory(../hpm_common/romapi romapi)
 add_subdirectory(../hpm_common/spi spi)
 add_subdirectory(../hpm_common/version version)
+add_subdirectory(../hpm_common/dshot dshot)
 

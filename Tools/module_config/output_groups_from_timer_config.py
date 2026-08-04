@@ -92,7 +92,11 @@ def get_timer_groups(timer_config_file, verbose=False):
             timers.append(str(len(timers)))
         elif timer:
             if verbose: print('found timer def: {:}'.format(timer))
-            dshot_support[timer] = 'DMA' in line
+            # DShot support: STM32 etc. require the timer DMA channel to be specified in the
+            # io_timer description (e.g. initIOTimer(Timer::Timer5, DMA{...})).
+            # HPMicro PWM timers have DMA built-in, so they always support DShot even without
+            # a DMA{} argument (the arch dshot driver configures DMA internally).
+            dshot_support[timer] = ('DMA' in line) or bool(re.search(r'Timer::PWM\d+', line))
             timers.append(timer)
         else:
             # Make sure we don't miss anything (e.g. for different syntax) or misparse (e.g. multi-line comments)

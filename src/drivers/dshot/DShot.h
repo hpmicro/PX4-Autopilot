@@ -52,6 +52,7 @@ using namespace time_literals;
 static constexpr unsigned int DSHOT150  =  150000u;
 static constexpr unsigned int DSHOT300  =  300000u;
 static constexpr unsigned int DSHOT600  =  600000u;
+static constexpr unsigned int DSHOT1200 = 1200000u;
 
 static constexpr int DSHOT_DISARM_VALUE = 0;
 static constexpr int DSHOT_MIN_THROTTLE = 1;
@@ -106,6 +107,7 @@ private:
 		DShot150  = 150,
 		DShot300  = 300,
 		DShot600  = 600,
+		DShot1200 = 1200,
 	};
 
 	struct Command {

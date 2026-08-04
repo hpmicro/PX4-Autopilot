@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2023 PX4 Development Team. All rights reserved.
- * Author: Peter van der Perk <peter.vanderperk@nxp.com>
+ * Copyright (C) 2024 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,11 +34,3 @@
 #pragma once
 
 #include <drivers/drv_pwm_output.h>
-
-
-/* The structure which contains configuration for DShot
- */
-typedef struct dshot_conf_t {
-	uint32_t			pinmux;
-	uint32_t			flexio_pin;
-} dshot_conf_t;
