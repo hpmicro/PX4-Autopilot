@@ -63,7 +63,16 @@ int board_mcu_version(char *rev, const char **revstr, const char **errata)
 	} else if (chip_id == 0x20202141){
 		*revstr = "HPM6360IPA2";
 		*rev = '2';
-		*errata = NULL;
+		if (errata) {
+			*errata = NULL;
+		}
+		return 2;
+	} else if (chip_id == 0x21502241){
+		*revstr = "HPM6364IEP2";
+		*rev = '2';
+		if (errata) {
+			*errata = NULL;
+		}
 		return 2;
 	}
 
