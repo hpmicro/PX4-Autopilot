@@ -69,6 +69,47 @@
 #include "hpm_dma_mgr.h"
 #include "hpm_soc.h"
 #include "hpm_misc.h"
+#include "dshot.h"
+
+/*
+ * DShot DMA glue: looks up per-PWM TRGM DMA source base and DMAMUX MOT
+ * slot base from dshot_pwm_dma_map (defined board-side in board_config.h).
+ * No hardcoded PWM data here.
+ */
+
+static const struct dshot_pwm_dma_t *dshot_find_pwm(PWM_Type *pwm)
+{
+	for (unsigned i = 0; i < dshot_pwm_dma_map_count; i++) {
+		if (dshot_pwm_dma_map[i].pwm == pwm) {
+			return &dshot_pwm_dma_map[i];
+		}
+	}
+	return NULL;
+}
+
+uint8_t dshot_get_trgm_dma_src(PWM_Type *pwm, uint8_t sub_ch)
+{
+	if (sub_ch >= 4u) {
+		return 0xFF;
+	}
+
+	const struct dshot_pwm_dma_t *cfg = dshot_find_pwm(pwm);
+	if (cfg == NULL) {
+		return 0xFF;
+	}
+
+	return (uint8_t)(cfg->trgm_src_base + sub_ch);
+}
+
+uint8_t dshot_get_mot_dma_src_base(PWM_Type *pwm)
+{
+	const struct dshot_pwm_dma_t *cfg = dshot_find_pwm(pwm);
+	if (cfg == NULL) {
+		return 0xFF;
+	}
+
+	return cfg->mot_src_base;
+}
 
 #define DSHOT_FRAME_BITS            16u
 #define DSHOT_THROTTLE_POSITION     5u
@@ -80,7 +121,6 @@
 #define DSHOT_MAX_CHANNELS          MAX_TIMER_IO_CHANNELS
 #define DSHOT_MAX_CH_PER_TIMER      4u
 #define DSHOT_RELOAD_HIGH_THRESHOLD 400u
-
 static const uint8_t s_sub_ch_cmp_start[DSHOT_MAX_CH_PER_TIMER] = {0, 2, 4, 6};
 static const uint8_t s_sub_ch_cmp_trig[DSHOT_MAX_CH_PER_TIMER]  = {9, 10, 11, 12};
 #define DSHOT_CMP_SHADOW_MATCH  8u
@@ -98,12 +138,6 @@ static dshot_freq_duty_list dshot_freq_duty_ctx[4] = {
     {1200, 313, 625}
 };
 
-static const uint8_t s_trgm_dma_src[DSHOT_MAX_CH_PER_TIMER] = {
-	HPM_TRGM0_DMA_SRC_PWM0_CMP9,
-	HPM_TRGM0_DMA_SRC_PWM0_CMP10,
-	HPM_TRGM0_DMA_SRC_PWM0_CMP11,
-	HPM_TRGM0_DMA_SRC_PWM0_CMP12,
-};
 
 typedef struct {
 	bool     initialized;
@@ -120,7 +154,6 @@ typedef struct {
 	uint32_t        t0h;
 	uint32_t        t1h;
 	bool            configured;
-	bool            isr_attached;
 
 	uint8_t         num_sub_ch;
 	uint32_t        px4_ch_mask;
@@ -142,44 +175,31 @@ ATTR_PLACE_AT_NONCACHEABLE_WITH_ALIGNMENT(8) dshot_timer_t   dshot_timers[MAX_IO
 static void dshot_timer_deinit(uint8_t timer_index);
 static int  dshot_timer_init(uint8_t timer_index, unsigned dshot_freq, uint32_t channel_mask);
 
-static int dshot_hdma_isr(int irq, void *context, void *arg)
+static void dshot_dma_tc_callback(DMA_Type *ptr, uint32_t channel, void *user_data)
 {
-	(void)context;
-	(void)arg;
+	dshot_timer_t *tmr = (dshot_timer_t *)user_data;
 
-	if (irq != HPM_IRQn_HDMA) {
-		return 0;
+	if (tmr == NULL || !tmr->configured || tmr->active_sub_mask == 0) {
+		return;
 	}
 
-	for (uint8_t t = 0; t < MAX_IO_TIMERS; t++) {
-		dshot_timer_t *tmr = &dshot_timers[t];
-
-		if (!tmr->configured || !tmr->active_sub_mask) {
+	for (uint8_t sc = 0; sc < tmr->num_sub_ch; sc++) {
+		if (!(tmr->active_sub_mask & (1u << sc))) {
 			continue;
 		}
 
-		for (uint8_t sc = 0; sc < tmr->num_sub_ch; sc++) {
-			if (!(tmr->active_sub_mask & (1u << sc))) {
-				continue;
-			}
-
-			dma_resource_t *res = &tmr->dma_res[sc];
-
-			uint32_t status = dma_check_transfer_status(res->base, res->channel);
-
-			if (status & DMA_CHANNEL_STATUS_TC) {
-				dma_clear_transfer_status(res->base, res->channel);
-				tmr->dma_done_mask |= (1u << sc);
-			}
+		if (tmr->dma_res[sc].channel != channel) {
+			continue;
 		}
 
-		if (tmr->dma_done_mask == tmr->active_sub_mask) {
-			tmr->dma_done_mask = 0;
-			nxsem_post(&tmr->dma_sem);
-		}
+		tmr->dma_done_mask |= (1u << sc);
+		break;
 	}
 
-	return 0;
+	if (tmr->dma_done_mask == tmr->active_sub_mask) {
+		tmr->dma_done_mask = 0;
+		nxsem_post(&tmr->dma_sem);
+	}
 }
 
 static void reset_pwm_counter(dshot_timer_t *t)
@@ -380,7 +400,14 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
 	}
 
 	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
-		trgm_dma_request_config(trgm, sc, s_trgm_dma_src[sc]);
+		uint8_t dma_src = dshot_get_trgm_dma_src(pwm, sc);
+
+		if (dma_src == 0xFF) {
+			PX4_ERR("DShot: PWM %p sub_ch %u has no TRGM DMA src", pwm, sc);
+			return -1;
+		}
+
+		trgm_dma_request_config(trgm, sc, dma_src);
 	}
 
 	uint32_t dma_req_mask = 0;
@@ -397,8 +424,15 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
 			return -1;
 		}
 
+		uint8_t mot_src_base = dshot_get_mot_dma_src_base(pwm);
+
+		if (mot_src_base == 0xFF) {
+			PX4_ERR("DShot: PWM %p has no MOT DMA src", pwm);
+			return -1;
+		}
+
 		dmamux_config(HPM_DMAMUX, t->dma_res[sc].channel,
-			      (uint8_t)(HPM_DMA_SRC_MOT0_0 + sc), true);
+			      (uint8_t)(mot_src_base + sc), true);
 
 		uint32_t cmp_data_idx = s_sub_ch_cmp_start[sc] + 1;
 		uint32_t dst_addr = (uint32_t)core_local_mem_to_sys_address(
@@ -421,12 +455,9 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
 		cfg->linked_ptr     = 0;
 		cfg->size_in_byte   = DSHOT_BUFFER_SIZE * 4;
 		cfg->interrupt_mask = DMA_INTERRUPT_MASK_TERMINAL_COUNT;
-	}
 
-	irq_attach(HPM_IRQn_HDMA, dshot_hdma_isr, NULL);
-	intc_set_irq_priority(IRQn_HDMA, 1);
-	up_enable_irq(HPM_IRQn_HDMA);
-	t->isr_attached = true;
+		dma_mgr_install_chn_tc_callback(&t->dma_res[sc], dshot_dma_tc_callback, t);
+	}
 
 	t->configured = true;
 
@@ -443,17 +474,17 @@ static void dshot_timer_deinit(uint8_t timer_index)
 
 	pwm_stop_counter(t->pwm);
 
-	if (t->isr_attached) {
-		up_disable_irq(HPM_IRQn_HDMA);
-		irq_detach(HPM_IRQn_HDMA);
-		t->isr_attached = false;
-	}
-
 	nxsem_destroy(&t->dma_sem);
 
 	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
+		uint8_t mot_src_base = dshot_get_mot_dma_src_base(t->pwm);
+
+		if (mot_src_base == 0xFF) {
+			continue;
+		}
+
 		dmamux_config(HPM_DMAMUX, t->dma_res[sc].channel,
-			      (uint8_t)(HPM_DMA_SRC_MOT0_0 + sc), false);
+			      (uint8_t)(mot_src_base + sc), false);
 	}
 
 	t->configured = false;
