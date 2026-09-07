@@ -122,7 +122,7 @@
  *   option0 = 0x00000015 (probe=SFDP SDR, freq_opt=5 -> 100MHz)
  *   option1 = 0x00001000 (1st IO group, CA_CS0, default drive strength, 3.0V) */
 #define XPI1_NOR_OPT_HEADER   0xfcf90001UL
-#define XPI1_NOR_OPT0         0x00000011UL
+#define XPI1_NOR_OPT0         0x00000014UL
 #define XPI1_NOR_OPT1         0x00001000UL
 
 /* XPI1 memory-mapped flash base (HPM6360: XPI0=0x80000000, XPI1=0x90000000) */

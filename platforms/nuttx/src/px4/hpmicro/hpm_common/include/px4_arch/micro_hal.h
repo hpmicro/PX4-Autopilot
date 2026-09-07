@@ -76,12 +76,14 @@ __BEGIN_DECLS
 #define PX4_CPU_UUID_WORD32_FORMAT_SIZE         (PX4_CPU_UUID_WORD32_LENGTH-1+(2*PX4_CPU_UUID_BYTE_LENGTH)+1)
 #define PX4_CPU_MFGUID_FORMAT_SIZE              ((2*PX4_CPU_MFGUID_BYTE_LENGTH)+1)
 
+#define PX4_BUS_OFFSET       1                  /* HPM buses are 0 based and adjustment is needed */
+
 #if defined(CONFIG_SPI)
 #define px4_spibus_initialize(bus_num_1based)   hpm_spibus_initialize(bus_num_1based)
 #endif
 
 #if defined(CONFIG_I2C)
-#define px4_i2cbus_initialize(bus_num_1based)   hpm_i2cbus_initialize(bus_num_1based)
+#define px4_i2cbus_initialize(bus_num_1based)   hpm_i2cbus_initialize(PX4_BUS_NUMBER_FROM_PX4(bus_num_1based))
 #define px4_i2cbus_uninitialize(pdev)           hpm_i2cbus_uninitialize(pdev)
 #endif
 
