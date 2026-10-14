@@ -24,8 +24,6 @@
 # 	param set-default UXRCE_DDS_PTCFG 2
 # fi
 
-safety_button start
-
 # Enable OSD (AT7456E) by default
 param set-default OSD_ATXXXX_CFG 1
 

@@ -74,8 +74,8 @@
 #define ADC_BATTERY_VOLTAGE_CHANNEL  0
 #define ADC_BATTERY_CURRENT_CHANNEL  1
 
-/* RC Serial port */
-#define RC_SERIAL_PORT                "/dev/ttyS6"
+/* RC Serial port: UART1 on PB24/PB25 (Receiver connector CN4) */
+#define RC_SERIAL_PORT                "/dev/ttyS1"
 #define RC_SERIAL_SINGLEWIRE
 #define RC_INVERT_INPUT(invert)       rc_input_invert(invert)
 
@@ -107,9 +107,6 @@
 #define GPIO_XPI1_D3   (GPIO_ALT | GPIO_AF14 | GPIO_DS_3V3_23 | GPIO_PORTB | GPIO_PIN16)
 #define GPIO_XPI1_CS   (GPIO_ALT | GPIO_AF14 | GPIO_DS_3V3_23 | GPIO_PORTB | GPIO_PIN17)
 
-#define GPIO_nSAFETY_SWITCH_LED_OUT_INIT   /* PB31 */ (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTB|GPIO_PIN31)
-#define GPIO_nSAFETY_SWITCH_LED_OUT        /* PB31 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN31)
-
 /* Board LEDs: PB31 (LED1) and PB01 (LED2), active-high. */
 #define GPIO_LED1_INIT                    /* PB31 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN31)
 #define GPIO_LED1_ON                      /* PB31 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN31)
@@ -118,13 +115,10 @@
 #define GPIO_LED2_ON                      /* PB01 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN1)
 #define GPIO_LED2_OFF                     /* PB01 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN1)
 
-/* Enable the FMU to control it if there is no px4io fixme:This should be BOARD_SAFETY_LED(__ontrue) */
-#define GPIO_LED_SAFETY GPIO_LED1_ON
-#define GPIO_LED_SAFETY_OFF GPIO_LED1_OFF
-
-#define GPIO_SAFETY_SWITCH_IN              /* PB01 */ (GPIO_INPUT|GPIO_SMT|GPIO_PORTB|GPIO_PIN1)
-/* Enable the FMU to use the switch it if there is no px4io fixme:This should be BOARD_SAFTY_BUTTON() */
-#define GPIO_BTN_SAFETY GPIO_SAFETY_SWITCH_IN /* Enable the FMU to control it if there is no px4io */
+/* This board has no safety button: no GPIO_BTN_SAFETY / GPIO_LED_SAFETY
+ * definitions, and the safety_button driver is disabled in the board
+ * configuration.  Arming is not gated by a safety switch.
+ */
 
 /* PWM */
 #define BOARD_NUM_IO_TIMERS         2

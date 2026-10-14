@@ -247,9 +247,6 @@ hpm_boardinitialize(void)
 {
 	printf("\n\nHPMicro PX4\n");
 
-	px4_arch_configgpio(GPIO_LED_SAFETY);
-	px4_arch_configgpio(GPIO_BTN_SAFETY);
-
 	px4_platform_init();
 
 #ifdef CONFIG_HPM_USBDEV
@@ -279,14 +276,19 @@ hpm_boardinitialize(void)
 
 void rc_input_invert(bool invert)
 {
-    // trgm_output_t config = { 0 };
+    /* NOTE: hardware RC input inversion is not available on this board.
+     *
+     * The reference implementation (px4/fmu-v6xhpm, HPM6750) routes the
+     * RC signal through the TRGM peripheral to invert it in hardware
+     * (PD24 -> TRGM2 input -> inverted -> TRGM2 output -> PD25), which
+     * requires dedicated PCB wiring between the TRGM output pin and the
+     * UART RX pin.  On this board the receiver is wired straight to
+     * UART1 RXD (PB25) and there is no on-chip path from a TRGM output
+     * back into the UART RX input, so inverted protocols such as SBUS
+     * cannot be received.  Use a non-inverted RC protocol (CRSF/ELRS,
+     * GHST, DSM, ...) or an external signal inverter.
+     */
 
-    // HPM_IOC->PAD[IOC_PAD_PD24].FUNC_CTL = IOC_PD24_FUNC_CTL_TRGM2_P_10;
-    // HPM_IOC->PAD[IOC_PAD_PD25].FUNC_CTL = IOC_PD25_FUNC_CTL_TRGM2_P_08;
-
-    // config.invert = true;
-    // config.input = HPM_TRGM2_INPUT_SRC_TRGM2_P10;
-    // trgm_output_config(HPM_TRGM2, HPM_TRGM2_OUTPUT_SRC_TRGM2_P8, &config);
-    // trgm_enable_io_output(HPM_TRGM2, 1 << 8);
+    (void)invert;
 }
 

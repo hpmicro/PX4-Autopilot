@@ -58,6 +58,7 @@
 #include <drivers/drv_dshot.h>
 #include <nuttx/arch.h>
 #include <nuttx/irq.h>
+#include <nuttx/clock.h>
 #include <nuttx/semaphore.h>
 
 #include <arch/board/board.h>
@@ -120,7 +121,6 @@ uint8_t dshot_get_mot_dma_src_base(PWM_Type *pwm)
 
 #define DSHOT_MAX_CHANNELS          MAX_TIMER_IO_CHANNELS
 #define DSHOT_MAX_CH_PER_TIMER      4u
-#define DSHOT_RELOAD_HIGH_THRESHOLD 400u
 static const uint8_t s_sub_ch_cmp_start[DSHOT_MAX_CH_PER_TIMER] = {0, 2, 4, 6};
 static const uint8_t s_sub_ch_cmp_trig[DSHOT_MAX_CH_PER_TIMER]  = {9, 10, 11, 12};
 #define DSHOT_CMP_SHADOW_MATCH  8u
@@ -161,6 +161,9 @@ typedef struct {
 
 	dma_resource_t       dma_res[DSHOT_MAX_CH_PER_TIMER];
 	dma_channel_config_t dma_cfg[DSHOT_MAX_CH_PER_TIMER];
+	uint8_t              dma_alloc_mask;
+	uint32_t             dma_req_mask;
+	bool                 sem_initialized;
 
 	uint32_t dma_buf[DSHOT_MAX_CH_PER_TIMER][DSHOT_BUFFER_SIZE];
 
@@ -173,7 +176,7 @@ static dshot_channel_t dshot_channels[DSHOT_MAX_CHANNELS];
 ATTR_PLACE_AT_NONCACHEABLE_WITH_ALIGNMENT(8) dshot_timer_t   dshot_timers[MAX_IO_TIMERS];
 
 static void dshot_timer_deinit(uint8_t timer_index);
-static int  dshot_timer_init(uint8_t timer_index, unsigned dshot_freq, uint32_t channel_mask);
+static int  dshot_timer_init(uint8_t timer_index, unsigned dshot_freq);
 
 static void dshot_dma_tc_callback(DMA_Type *ptr, uint32_t channel, void *user_data)
 {
@@ -188,7 +191,7 @@ static void dshot_dma_tc_callback(DMA_Type *ptr, uint32_t channel, void *user_da
 			continue;
 		}
 
-		if (tmr->dma_res[sc].channel != channel) {
+		if (tmr->dma_res[sc].base != ptr || tmr->dma_res[sc].channel != channel) {
 			continue;
 		}
 
@@ -255,6 +258,10 @@ int up_dshot_init(uint32_t channel_mask, unsigned dshot_freq,
 	PX4_INFO("DShot: init freq=%u Hz, channels=%u bidirectional=%u",
 		(unsigned)dshot_freq, (unsigned)channel_mask, (unsigned)enable_bidirectional_dshot);
 
+	for (uint8_t t = 0; t < MAX_IO_TIMERS; t++) {
+		dshot_timer_deinit(t);
+	}
+
 	memset(dshot_channels, 0, sizeof(dshot_channels));
 	memset(dshot_timers, 0, sizeof(dshot_timers));
 
@@ -299,8 +306,17 @@ int up_dshot_init(uint32_t channel_mask, unsigned dshot_freq,
 			continue;
 		}
 
-		if (dshot_timer_init(t, dshot_freq, channel_mask) < 0) {
+		if (dshot_timer_init(t, dshot_freq) < 0) {
 			PX4_ERR("DShot: timer %u init failed", t);
+
+			for (uint8_t sc = 0; sc < dshot_timers[t].num_sub_ch; sc++) {
+				uint8_t ch = dshot_timers[t].px4_ch_ofs[sc];
+
+				if (ch < DSHOT_MAX_CHANNELS) {
+					dshot_channels[ch].initialized = false;
+				}
+			}
+
 			dshot_timer_deinit(t);
 			continue;
 		}
@@ -311,8 +327,7 @@ int up_dshot_init(uint32_t channel_mask, unsigned dshot_freq,
 	return (int)(channel_mask & initialized_mask);
 }
 
-static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
-			    uint32_t channel_mask)
+static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq)
 {
 	dshot_timer_t  *t   = &dshot_timers[timer_index];
 	PWM_Type       *pwm = (PWM_Type *)io_timers[timer_index].base;
@@ -326,6 +341,13 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
 	clock_add_to_group((clock_name_t)io_timers[timer_index].clock_name, 0);
 
 	t->clk_freq = clock_get_frequency((clock_name_t)io_timers[timer_index].clock_name);
+
+	if (dshot_freq == 0 || t->clk_freq < dshot_freq) {
+		PX4_ERR("DShot: timer %u: invalid freq %u Hz (clk %lu Hz)",
+			timer_index, dshot_freq, (unsigned long)t->clk_freq);
+		return -1;
+	}
+
 	t->reload   = t->clk_freq / dshot_freq - 1;
 
 	t->t0h = 0;
@@ -345,6 +367,7 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
 	}
 
 	nxsem_init(&t->dma_sem, 0, 0);
+	t->sem_initialized = true;
 
 	pwm_stop_counter(pwm);
 	reset_pwm_counter(t);
@@ -417,12 +440,15 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq,
 	}
 
 	pwm_enable_dma_request(pwm, dma_req_mask);
+	t->dma_req_mask = dma_req_mask;
 
 	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
 		if (status_success != dma_mgr_request_specified_resource(&t->dma_res[sc], HPM_HDMA)) {
 			PX4_ERR("DShot: timer %u: dma resource request failed", timer_index);
 			return -1;
 		}
+
+		t->dma_alloc_mask |= (1u << sc);
 
 		uint8_t mot_src_base = dshot_get_mot_dma_src_base(pwm);
 
@@ -468,26 +494,28 @@ static void dshot_timer_deinit(uint8_t timer_index)
 {
 	dshot_timer_t *t = &dshot_timers[timer_index];
 
-	if (!t->configured) {
-		return;
+	if (t->configured) {
+		pwm_stop_counter(t->pwm);
+		t->configured = false;
 	}
 
-	pwm_stop_counter(t->pwm);
+	if (t->sem_initialized) {
+		nxsem_destroy(&t->dma_sem);
+		t->sem_initialized = false;
+	}
 
-	nxsem_destroy(&t->dma_sem);
+	if (t->pwm != NULL && t->dma_req_mask != 0) {
+		pwm_disable_dma_request(t->pwm, t->dma_req_mask);
+		t->dma_req_mask = 0;
+	}
 
-	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
-		uint8_t mot_src_base = dshot_get_mot_dma_src_base(t->pwm);
-
-		if (mot_src_base == 0xFF) {
-			continue;
+	for (uint8_t sc = 0; sc < DSHOT_MAX_CH_PER_TIMER; sc++) {
+		if (t->dma_alloc_mask & (1u << sc)) {
+			dma_mgr_release_resource(&t->dma_res[sc]);
+			t->dma_alloc_mask &= ~(1u << sc);
 		}
-
-		dmamux_config(HPM_DMAMUX, t->dma_res[sc].channel,
-			      (uint8_t)(mot_src_base + sc), false);
 	}
 
-	t->configured = false;
 	t->num_sub_ch = 0;
 	t->px4_ch_mask = 0;
 }
@@ -509,24 +537,6 @@ void dshot_motor_data_set(unsigned channel, uint16_t throttle, bool telemetry)
 
 	dshot_channels[channel].frame_data = packet;
 	dshot_channels[channel].tx_pending = true;
-
-	uint8_t timer_index = timer_io_channels[channel].timer_index;
-	dshot_timer_t *t = &dshot_timers[timer_index];
-
-	uint8_t sub_ch = 0xFF;
-
-	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
-		if (t->px4_ch_ofs[sc] == channel) {
-			sub_ch = sc;
-			break;
-		}
-	}
-
-	if (sub_ch >= DSHOT_MAX_CH_PER_TIMER) {
-		return;
-	}
-
-	dshot_fill_dma_buffer(t->dma_buf[sub_ch], packet, t->t0h, t->t1h);
 }
 
 void up_dshot_trigger(void)
@@ -553,6 +563,9 @@ void up_dshot_trigger(void)
 			continue;
 		}
 
+		while (nxsem_trywait(&t->dma_sem) == 0) {
+		}
+
 		t->active_sub_mask = tx_mask;
 		t->dma_done_mask   = 0;
 
@@ -564,6 +577,10 @@ void up_dshot_trigger(void)
 				continue;
 			}
 
+			dshot_fill_dma_buffer(t->dma_buf[sc],
+					      dshot_channels[t->px4_ch_ofs[sc]].frame_data,
+					      t->t0h, t->t1h);
+
 			dma_setup_channel(t->dma_res[sc].base, t->dma_res[sc].channel,
 					  &t->dma_cfg[sc], true);
 			dma_enable_channel_interrupt(t->dma_res[sc].base, t->dma_res[sc].channel,
@@ -572,7 +589,18 @@ void up_dshot_trigger(void)
 
 		pwm_start_counter(t->pwm);
 
-		nxsem_wait(&t->dma_sem);
+		if (nxsem_tickwait(&t->dma_sem, MSEC2TICK(10)) < 0) {
+			PX4_ERR("DShot: timer %u DMA timeout", timer_index);
+
+			for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
+				if (!(tx_mask & (1u << sc))) {
+					continue;
+				}
+
+				dma_mgr_disable_channel(&t->dma_res[sc]);
+			}
+		}
+
 		t->active_sub_mask = 0;
 	}
 }
