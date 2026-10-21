@@ -38,6 +38,7 @@
 
 #include <px4_platform_common/px4_config.h>
 #include <systemlib/px4_macros.h>
+
 #include <nuttx/arch.h>
 #include <nuttx/irq.h>
 
@@ -62,6 +63,18 @@
 #include "hpm_trgm_drv.h"
 #include "hpm_pwm_drv.h"
 #include "hpm_clock_drv.h"
+
+/*
+ * Weak default for the per-PWM-timer sample-clock array used by the
+ * bidirectional-DShot oversampling RX. Boards that need oversampling
+ * define their own strong version in timer_config.cpp; this default
+ * (all zeros -> "no sample timer") lets other boards link cleanly
+ * even when the dshot driver is compiled in.
+ */
+__attribute__((weak)) const bdshot_sample_timer_t bdshot_sample_timers[MAX_IO_TIMERS] = {
+	[0 ... (MAX_IO_TIMERS - 1)] = { .sample_gptmr_base = 0, .sample_gptmr_ch = 0,
+					  .sample_clock = 0, .dmamux_src = 0 }
+};
 
 #if defined(CONFIG_HPM_PWM0)
 static int io_timer_handler0(int irq, void *context, void *arg);

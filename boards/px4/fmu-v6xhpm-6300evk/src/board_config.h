@@ -54,7 +54,7 @@
 #define HRT_TIMER 1
 #define HRT_TIMER_CHANNEL 1 // HPM GPTMR channel 1
 
-/* This board provides a DMA pool and APIs */
+/* This board provides a DMA pool */
 #define BOARD_DMA_ALLOC_POOL_SIZE 5120
 
 #define BOARD_ENABLE_CONSOLE_BUFFER

@@ -25,3 +25,12 @@
 # fi
 
 safety_button start
+
+# Output protocol on PWM0 (MAIN 1-4), selectable from QGroundControl:
+# DShot150/300/600/1200, OneShot, or PWM. "set-default" preserves the
+# value set in the ground station across reboots.
+param set-default PWM_MAIN_TIM0 -3
+param set-default PWM_MAIN_FUNC1 101
+param set-default PWM_MAIN_FUNC2 102
+param set-default PWM_MAIN_FUNC3 103
+param set-default PWM_MAIN_FUNC4 104

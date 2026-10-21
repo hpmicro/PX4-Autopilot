@@ -11,6 +11,7 @@
 *(.text.spi_setup_dma_transfer)
 *(.text.spi_tx_dma_channel_tc_callback)
 *libarch_hrt.a:*(.text .text*)
+*libarch_dshot.a:*(.text .text*)
 *libuORB.a:*(.text .text*)
 *drivers__device.a:*(.text .text*)
 *drivers_gyroscope.a:*(.text .text*)

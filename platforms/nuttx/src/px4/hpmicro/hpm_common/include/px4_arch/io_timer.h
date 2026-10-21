@@ -109,6 +109,26 @@ typedef struct timer_io_channels_t {
 	uint8_t		trgm_px;
 } timer_io_channels_t;
 
+/*
+ * Per-timer sample clock source for the bidirectional-DShot oversampling
+ * RX. Indexed by timer_index (same as io_timers[]). A zero sample_gptmr_base
+ * means this timer has no oversampling (e.g. plain one-way DShot or no
+ * DShot at all on that module). The sample GPTMR is configured in
+ * gptmr_work_mode_no_capture with dma_request_event = reload, so every
+ * counter overflow issues one HDMA request that reads the GPIO_DI port.
+ *
+ * sample_clock is the GPTMR clock name (clock_gptmrN for the GPTMR
+ * instance being used) so we don't have to enumerate every possible
+ * clock_gptmrN at compile time in dshot.c (HPM6360 has GPTMR0-3,
+ * HPM6750 has GPTMR0-7).
+ */
+typedef struct bdshot_sample_timer_t {
+	uint32_t	sample_gptmr_base;  /* GPTMR base (HPM_GPTMRx_BASE), 0 = none */
+	uint8_t		sample_gptmr_ch;    /* GPTMR channel index (0..3) */
+	uint32_t	sample_clock;       /* clock_name_t for this GPTMR instance */
+	uint8_t		dmamux_src;         /* DMAMUX source id (HPM_DMA_SRC_GPTMRx_y) */
+} bdshot_sample_timer_t;
+
 typedef void (*channel_handler_t)(void *context, const io_timers_t *timer, uint32_t chan_index,
 				  const timer_io_channels_t *chan,
 				  hrt_abstime isrs_time, uint16_t isrs_rcnt);
@@ -118,6 +138,7 @@ typedef void (*channel_handler_t)(void *context, const io_timers_t *timer, uint3
 __EXPORT extern const io_timers_t io_timers[MAX_IO_TIMERS];
 __EXPORT extern const io_timers_channel_mapping_t io_timers_channel_mapping;
 __EXPORT extern const timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS];
+__EXPORT extern const bdshot_sample_timer_t bdshot_sample_timers[MAX_IO_TIMERS];
 
 __EXPORT extern const io_timers_t led_pwm_timers[MAX_LED_TIMERS];
 __EXPORT extern const timer_io_channels_t led_pwm_channels[MAX_TIMER_LED_CHANNELS];
