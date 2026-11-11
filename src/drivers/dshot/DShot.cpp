@@ -258,31 +258,35 @@ void DShot::publish_esc_status(void)
 	esc_status_s &esc_status = esc_status_pub.get();
 	int telemetry_index = 0;
 
-	// clear data of the esc that are offline
-	for (int index = 0; (index < _last_telemetry_index); index++) {
-		if ((esc_status.esc_online_flags & (1 << index)) == 0) {
-			memset(&esc_status.esc[index], 0, sizeof(struct esc_report_s));
-		}
-	}
-
-	// FIXME: mark all UART Telemetry ESC's as online, otherwise commander complains even for a single dropout
 	esc_status.esc_count = _num_motors;
-	esc_status.esc_online_flags = (1 << esc_status.esc_count) - 1;
 	esc_status.esc_armed_flags = (1 << esc_status.esc_count) - 1;
 
 	if (_bidirectional_dshot_enabled) {
+		// Keep the last valid RPM and its timestamp when a reply is missing.
+		esc_status.esc_online_flags = 0;
+
 		for (unsigned i = 0; i < _num_outputs; i++) {
 			if (_mixing_output.isFunctionSet(i)) {
-				if (up_bdshot_channel_status(i)) {
-					esc_status.esc_online_flags |= 1 << i;
+				esc_status.esc[telemetry_index].actuator_function = _actuator_functions[telemetry_index];
 
-				} else {
-					esc_status.esc_online_flags &= ~(1 << i);
+				if (up_bdshot_channel_status(i) > 0) {
+					esc_status.esc_online_flags |= 1 << telemetry_index;
 				}
 
 				++telemetry_index;
 			}
 		}
+
+	} else {
+		// clear data of the esc that are offline
+		for (int index = 0; (index < _last_telemetry_index); index++) {
+			if ((esc_status.esc_online_flags & (1 << index)) == 0) {
+				memset(&esc_status.esc[index], 0, sizeof(struct esc_report_s));
+			}
+		}
+
+		// FIXME: mark all UART Telemetry ESC's as online, otherwise commander complains even for a single dropout
+		esc_status.esc_online_flags = (1 << esc_status.esc_count) - 1;
 	}
 
 	if (!esc_status_pub.advertised()) {
@@ -291,6 +295,8 @@ void DShot::publish_esc_status(void)
 	} else {
 		esc_status_pub.update();
 	}
+
+	_last_esc_status_publish = hrt_absolute_time();
 
 	// reset esc online flags
 	esc_status.esc_online_flags = 0;
@@ -566,7 +572,10 @@ void DShot::Run()
 		// Add bdshot data to esc status
 		const int need_to_publish = handle_new_bdshot_erpm();
 
-		if (need_to_publish) {
+		// Publish loss of communication and UART telemetry even when no valid
+		// eRPM arrives, or when the ready count never reaches _num_motors.
+		if (need_to_publish || (_outputs_initialized && _num_motors > 0
+				       && hrt_elapsed_time(&_last_esc_status_publish) >= 100_ms)) {
 			publish_esc_status();
 		}
 	}
