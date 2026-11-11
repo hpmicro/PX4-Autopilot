@@ -972,6 +972,21 @@ static void bdshot_switch_to_input(dshot_timer_t *t)
 	t->rx_active       = true;
 }
 
+static void bdshot_restore_outputs(dshot_timer_t *t)
+{
+	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
+		uint8_t px4_ch = t->px4_ch_ofs[sc];
+		uint32_t gpio_out = timer_io_channels[px4_ch].gpio_out;
+
+#ifdef IOC_PAD_PAD_CTL_HYS_SET
+		/* hpm_config_gpio() rewrites PAD_CTL. Preserve the RX hysteresis
+		 * enabled at setup when restoring the PWM function for the next TX. */
+		gpio_out |= GPIO_SMT;
+#endif
+		px4_arch_configgpio(gpio_out);
+	}
+}
+
 static void bdshot_finish_capture_and_restore(dshot_timer_t *t)
 {
 	if (!t->rx_active) {
@@ -991,10 +1006,7 @@ static void bdshot_finish_capture_and_restore(dshot_timer_t *t)
 		gptmr_stop_counter(t->sample_gptmr, t->sample_gptmr_ch);
 		dma_abort_channel(t->sample_dma.base, 1u << t->sample_dma.channel);
 
-		for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
-			uint8_t px4_ch = t->px4_ch_ofs[sc];
-			px4_arch_configgpio(timer_io_channels[px4_ch].gpio_out);
-		}
+		bdshot_restore_outputs(t);
 
 		t->rx_decode_pending = false;
 		t->rx_active = false;
@@ -1020,10 +1032,7 @@ static void bdshot_finish_capture_and_restore(dshot_timer_t *t)
 	t->rx_decode_pending = true;
 	t->rx_active         = false;
 
-	for (uint8_t sc = 0; sc < t->num_sub_ch; sc++) {
-		uint8_t px4_ch = t->px4_ch_ofs[sc];
-		px4_arch_configgpio(timer_io_channels[px4_ch].gpio_out);
-	}
+	bdshot_restore_outputs(t);
 }
 
 static void bdshot_decode_pending(dshot_timer_t *t)
