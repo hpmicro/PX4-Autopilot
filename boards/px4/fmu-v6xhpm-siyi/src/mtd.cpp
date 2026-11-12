@@ -45,11 +45,11 @@ static const px4_mft_device_t spi0 = {             // FM25V02A on FMUM native: 3
 };
 static const px4_mft_device_t i2c0 = {             // 24LC64T on Base  8K 32 X 256
 	.bus_type = px4_mft_device_t::I2C,
-	.devid    = PX4_MK_I2C_DEVID(0, 0x50)
+	.devid    = PX4_MK_I2C_DEVID(PX4_BUS_NUMBER_TO_PX4(0), 0x50)
 };
 static const px4_mft_device_t i2c3 = {             // 24LC64T on IMU   8K 32 X 256
 	.bus_type =  px4_mft_device_t::I2C,
-	.devid    =  PX4_MK_I2C_DEVID(3, 0x50)
+	.devid    =  PX4_MK_I2C_DEVID(PX4_BUS_NUMBER_TO_PX4(3), 0x50)
 };
 
 

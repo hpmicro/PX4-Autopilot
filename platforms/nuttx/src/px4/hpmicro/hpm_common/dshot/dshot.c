@@ -102,7 +102,9 @@ uint8_t dshot_get_mot_dma_src_base(PWM_Type *pwm)
 #define DSHOT_TELEMETRY_POSITION    4u
 #define NIBBLES_SIZE                4u
 #define DSHOT_NUMBER_OF_NIBBLES     3u
-#define DSHOT_BUFFER_SIZE           18u
+/* One leading guard and two trailing guards. DMA writes CMP shadow registers:
+ * at the final transfer, the first trailing guard must already be active. */
+#define DSHOT_BUFFER_SIZE           (DSHOT_FRAME_BITS + 3u)
 
 #define DSHOT_MAX_CHANNELS          MAX_TIMER_IO_CHANNELS
 #define DSHOT_MAX_CH_PER_TIMER      4u
@@ -1077,6 +1079,9 @@ static void dshot_dma_tc_callback(DMA_Type *ptr, uint32_t channel, void *user_da
 		}
 
 	} else {
+		/* The first trailing guard has already latched at reload. Stop here
+		 * rather than letting scheduler latency extend the PWM burst. */
+		pwm_stop_counter(tmr->pwm);
 		tmr->dma_done_mask = 0;
 		nxsem_post(&tmr->dma_sem);
 	}
@@ -1328,6 +1333,8 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq)
 	pwm_get_default_pwm_config(pwm, &pwm_cfg);
 	pwm_cfg.enable_output          = true;
 	pwm_cfg.dead_zone_in_half_cycle = 0;
+	/* Ordinary DShot idles low. Invert only for bidirectional DShot,
+	 * which idles high, as selected by enable_bidirectional_dshot. */
 	pwm_cfg.invert_output          = bdshot_capable;
 
 	pwm_set_reload(pwm, 0, t->reload);
@@ -1337,7 +1344,7 @@ static int dshot_timer_init(uint8_t timer_index, unsigned dshot_freq)
 		uint8_t          px4_ch     = t->px4_ch_ofs[sc];
 		uint8_t          out_pin    = timer_io_channels[px4_ch].timer_channel;
 		uint32_t         ch_idx     = s_sub_ch_cmp_start[sc];
-		pwm_cmp_config_t cmp_cfg[2];
+		pwm_cmp_config_t cmp_cfg[2] = {0};
 
 		cmp_cfg[0].mode           = pwm_cmp_mode_output_compare;
 		cmp_cfg[0].cmp            = 0;
@@ -1899,4 +1906,3 @@ void up_bdshot_status(void)
 		}
 	}
 }
-
