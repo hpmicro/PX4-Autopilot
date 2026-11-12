@@ -61,6 +61,12 @@ static const struct dshot_pwm_dma_t dshot_pwm_dma_map[] = {
 #if defined(HPM_PWM1) && defined(HPM_TRGM1_DMA_SRC_PWM1_CMP9) && defined(HPM_DMA_SRC_MOT1_0)
 	{HPM_PWM1, HPM_TRGM1_DMA_SRC_PWM1_CMP9, HPM_DMA_SRC_MOT1_0},
 #endif
+#if defined(HPM_PWM2) && defined(HPM_TRGM2_DMA_SRC_PWM2_CMP9) && defined(HPM_DMA_SRC_MOT2_0)
+	{HPM_PWM2, HPM_TRGM2_DMA_SRC_PWM2_CMP9, HPM_DMA_SRC_MOT2_0},
+#endif
+#if defined(HPM_PWM3) && defined(HPM_TRGM3_DMA_SRC_PWM3_CMP9) && defined(HPM_DMA_SRC_MOT3_0)
+	{HPM_PWM3, HPM_TRGM3_DMA_SRC_PWM3_CMP9, HPM_DMA_SRC_MOT3_0},
+#endif
 };
 
 static const unsigned dshot_pwm_dma_map_count =

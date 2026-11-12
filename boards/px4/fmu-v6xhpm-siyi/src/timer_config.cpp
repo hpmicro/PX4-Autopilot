@@ -33,6 +33,8 @@
 
 #include <px4_arch/io_timer_hw_description.h>
 
+#include <hpm_soc.h>
+#include <hpm_clock_drv.h>
 
 constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
 	// initIOTimer(Timer::PWM0),
@@ -50,6 +52,20 @@ constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
 	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel9}, {GPIO::PortC, GPIO::Pin5}, Timer::TRGM_P9),
 	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel8}, {GPIO::PortC, GPIO::Pin9}, Timer::TRGM_P8),
 	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel10}, {GPIO::PortC, GPIO::Pin8}, Timer::TRGM_P10),
+};
+
+/*
+ * Bidirectional DShot sample timers, indexed by io_timers[]: PWM1, PWM3.
+ * GPTMR0 is the NuttX timer and GPTMR1 is the PX4 HRT.
+ *
+ * PWM1 outputs 5-8 share PortC and support simultaneous telemetry capture.
+ * PWM3 outputs 1-3 use PortD, but output 4 uses PortC. The oversampling
+ * driver requires one GPIO port per PWM instance: use outputs 1-3 OR
+ * output 4 for bidirectional DShot, never both in the same configuration.
+ */
+constexpr bdshot_sample_timer_t bdshot_sample_timers[MAX_IO_TIMERS] = {
+	{ HPM_GPTMR2_BASE, 0, clock_gptmr2, HPM_DMA_SRC_GPTMR2_0 }, /* PWM1: outputs 5-8 */
+	{ HPM_GPTMR3_BASE, 0, clock_gptmr3, HPM_DMA_SRC_GPTMR3_0 }, /* PWM3: outputs 1-4 */
 };
 
 constexpr io_timers_channel_mapping_t io_timers_channel_mapping =

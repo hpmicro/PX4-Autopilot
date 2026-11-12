@@ -33,6 +33,8 @@
 
 #include <px4_arch/io_timer_hw_description.h>
 
+#include <hpm_soc.h>
+#include <hpm_clock_drv.h>
 
 constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
 	initIOTimer(Timer::PWM0),
@@ -46,6 +48,16 @@ constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
 	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel1}, {GPIO::PortA, GPIO::Pin18}, Timer::TRGM_NotUsed),
 	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel2}, {GPIO::PortA, GPIO::Pin17}, Timer::TRGM_NotUsed),
 	initIOTimerChannel(io_timers, {Timer::PWM1, Timer::Channel3}, {GPIO::PortA, GPIO::Pin16}, Timer::TRGM_NotUsed),
+};
+
+/*
+ * Bidirectional DShot sample timers, indexed by io_timers[] (not PWM number).
+ * GPTMR0 is the NuttX timer and GPTMR1 is the PX4 HRT. PWM0 has no routed
+ * outputs; all four PWM1 outputs are sampled together on PortA.
+ */
+constexpr bdshot_sample_timer_t bdshot_sample_timers[MAX_IO_TIMERS] = {
+	{}, /* PWM0: no outputs */
+	{ HPM_GPTMR3_BASE, 0, clock_gptmr3, HPM_DMA_SRC_GPTMR3_0 }, /* PWM1: outputs 1-4 */
 };
 
 constexpr io_timers_channel_mapping_t io_timers_channel_mapping =
